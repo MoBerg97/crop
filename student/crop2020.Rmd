@@ -112,7 +112,7 @@ cropnms[37] = 'Silomais'
 
 # rename crops
 
-mapvalues(fin$crop, from = crop_names, to = cropnms)
+fin$crop = mapvalues(fin$crop, from = crop_names, to = cropnms)
 
 #crop categories
 # Getreide = 'Getreidemit' , 'Getreideohne' ,  'Brotgetreidearten' , 'Wintergetreide' , 'Futtergetreide' ,  'Sommergetreide' , 'Titricale'
@@ -127,25 +127,25 @@ mapvalues(fin$crop, from = crop_names, to = cropnms)
 # Leguminosen = 'Leguminosen', 'Erbsen', 'Ackerbohnen', 'Klee', 'Luzerne', 'Süßlupinen'
 # Gras = 'Wiesen', 'Weiden', 'Feldgras', 'Rauhfutter'
 
+#create duplicate of fin with crops categorized
 fin2 = fin
-mapvalues(fin2$crop, from= c('Getreidemit','Getreideohne','Brotgetreidearten','Wintergetreide','Futtergetreide','Sommergetreide','Titricale'), to= c('Getreide','Getreide','Getreide','Getreide','Getreide','Getreide','Getreide'))
-mapvalues(fin2$crop, from= c('Winterweizen','Sommerweizen','Getreideganz','Hartweizen','Weizen'), to= c('Weizen','Weizen','Weizen','Weizen','Weizen'))
-mapvalues(fin2$crop, from= c('Roggenmit','Roggen'), to=c('Roggen','Roggen'))
-mapvalues(fin2$crop, from= c('Gerste','Wintergerste','Sommergerste'), to= c('Gerste','Gerste','Gerste',))
-mapvalues(fin2$crop, from= c('Körnermais','Silomais'),to= c('Mais','Mais'))
-mapvalues(fin2$crop, from= c('Frühkartoffeln','Kartoffeln','Spätkartoffeln'),to= c('Kartoffeln','Kartoffeln','Kartoffeln'))
-mapvalues(fin2$crop, from= c('Zuckerrüben','Runkelrüben'),to= c('Rüben','Rüben'))
-mapvalues(fin2$crop, from= c('Winterraps','Sommerraps','Sonnenblumen'),to= c('RapsSonne','RapsSonne','RapsSonne'))
-mapvalues(fin2$crop, from= c('Leguminosen','Erbsen','Ackerbohnen','Klee','Luzerne','Süßlupinen'),to= c('Leguminosen','Leguminosen','Leguminosen','Leguminosen','Leguminosen','Leguminosen'))
-mapvalues(fin2$crop, from= c('Wiesen','Weiden','Feldgras','Rauhfutter'),to= c('Gras','Gras','Gras','Gras'))
+fin2$crop = mapvalues(fin2$crop, from= c('Getreidemit','Getreideohne','Brotgetreidearten','Wintergetreide','Futtergetreide','Sommergetreide','Titricale'), to= c('Getreide','Getreide','Getreide','Getreide','Getreide','Getreide','Getreide'))
+fin2$crop = mapvalues(fin2$crop, from= c('Winterweizen','Sommerweizen','Getreideganz','Hartweizen','Weizen'), to= c('Weizen','Weizen','Weizen','Weizen','Weizen'))
+fin2$crop = mapvalues(fin2$crop, from= c('Roggenmit','Roggen'), to=c('Roggen','Roggen'))
+fin2$crop = mapvalues(fin2$crop, from= c('Gerste','Wintergerste','Sommergerste'), to= c('Gerste','Gerste','Gerste'))
+fin2$crop = mapvalues(fin2$crop, from= c('Körnermaismit','Silomais'),to= c('Mais','Mais'))
+fin2$crop = mapvalues(fin2$crop, from= c('Frühkartoffeln','Kartoffeln','Spätkartoffeln'),to= c('Kartoffeln','Kartoffeln','Kartoffeln'))
+fin2$crop = mapvalues(fin2$crop, from= c('Zuckerrüben','Runkelrüben'),to= c('Rüben','Rüben'))
+fin2$crop = mapvalues(fin2$crop, from= c('Winterraps','Sommerraps','Sonnenblumen'),to= c('RapsSonne','RapsSonne','RapsSonne'))
+fin2$crop = mapvalues(fin2$crop, from= c('Leguminosen','Erbsen','Ackerbohnen','Klee','Luzerne','Süßlupinen'),to= c('Leguminosen','Leguminosen','Leguminosen','Leguminosen','Leguminosen','Leguminosen'))
+fin2$crop = mapvalues(fin2$crop, from= c('Wiesen','Weiden','Feldgras','Rauhfutter'),to= c('Gras','Gras','Gras','Gras'))
 
+# TODO consolidate rows with allover same values, but different dt.ha
+fin2 = fin2 %>%
+  group_by(rs,shape_area,geom,year,gen,crop) %>%
+  summarise(dt.ha = sum(dt.ha,na.rm = TRUE))
 
-# TODO reduce crop to categories
-
-fin2 = fin %>%
-  group_by(gen, year, rs, shape_area) %>%
-  summarise(sum(dt.ha))
-
+unique(fin2$crop)
 ```
 
 ## Manipulate data and visualize
@@ -191,8 +191,13 @@ mn_cropkreis = fin %>%
   group_by(crop, gen) %>%
   summarise(mean(dt.ha))
   
-# TODO Durchschnittsertrag je wichtige Feldfrucht pro Fläche
+# TODO Durchschnittsertrag je wichtige Feldfrucht pro Kreis
 
+mn_icropkreis = fin2 %>%
+  group_by(crop,gen) %>%
+  summarise(mean(dt.ha))
+
+mapview(mn_icropkreis, cex = 'dt.ha')
 # TODO Auswahl der Kategorien und Berechnung eines Index
 
 # TODO Visualisierung
