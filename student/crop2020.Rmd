@@ -16,6 +16,7 @@ require(plyr)
 require(dplyr)
 require(ggplot2)
 require(leaflet)
+require(forcats)
 ```
 
 ## Harvest data
