@@ -15,8 +15,8 @@ require(stringr)
 require(plyr)
 require(dplyr)
 require(ggplot2)
-require(leaflet)
 require(forcats)
+require(tidyr)
 ```
 
 ## Harvest data
@@ -140,12 +140,13 @@ fin2$crop = mapvalues(fin2$crop, from= c('Winterraps','Sommerraps','Sonnenblumen
 fin2$crop = mapvalues(fin2$crop, from= c('Leguminosen','Erbsen','Ackerbohnen','Klee','Luzerne','Süßlupinen'),to= c('Leguminosen','Leguminosen','Leguminosen','Leguminosen','Leguminosen','Leguminosen'))
 fin2$crop = mapvalues(fin2$crop, from= c('Wiesen','Weiden','Feldgras','Rauhfutter'),to= c('Gras','Gras','Gras','Gras'))
 
+
 # TODO consolidate rows with allover same values, but different dt.ha
 fin2 = fin2 %>%
   group_by(rs,shape_area,geom,year,gen,crop) %>%
   summarise(dt.ha = sum(dt.ha,na.rm = TRUE))
 
-unique(fin2$crop)
+cropnms2 = unique(fin2$crop)
 ```
 
 ## Manipulate data and visualize
@@ -179,12 +180,13 @@ mn_cropjahr = fin %>%
   group_by(year, crop) %>%
   summarise(mean(dt.ha))
 
-# TODO Durchschnittsertrag je Kreis pro Fläche mit anständiger Formel
-mn_kreispa = fin %>%
-  group_by(gen) %>%
-  summarise(mn_dt = mean(dt.ha)^8/mean(shape_area)) #!!!
-
-plot(mn_kreispa)
+#FOLGENDES MACHT KEINEN SINN DA ERTRAG JA SCHON PRO FLÄCHE IST
+# # Durchschnittsertrag je Kreis pro Fläche mit anständiger Formel
+# mn_kreispa = fin %>%
+#   group_by(gen) %>%
+#   summarise(mn_dt = mean(dt.ha)/mean(shape_area)) #!!!
+# 
+# plot(mn_kreispa)
 
 # Durchschnittsertrag je Feldfrucht je Kreis 
 mn_cropkreis = fin %>%
@@ -192,13 +194,22 @@ mn_cropkreis = fin %>%
   summarise(mean(dt.ha))
   
 # TODO Durchschnittsertrag je wichtige Feldfrucht pro Kreis
-
-mn_icropkreis = fin2 %>%
+for (i in 1:length(cropnms2)){
+mn_cropkreis2 = fin2 %>%
   group_by(crop,gen) %>%
-  summarise(mean(dt.ha))
+  summarise(mn_dt = mean(dt.ha)) %>%
+  filter(crop == cropnms2[i])
+  
+print(
+  ggplot(data = mn_cropkreis2) +
+  geom_sf(aes(fill = mn_dt)) + 
+  ggtitle(cropnms2[i], subtitle = 'yield in dt per ha')
+)
+}
 
-mapview(mn_icropkreis, cex = 'dt.ha')
 # TODO Auswahl der Kategorien und Berechnung eines Index
+# schauen ob sich crops Anbauzeiten decken oder ergänzen
+# schauen ob was intesiverer Bearbeitung bedarf
 
 # TODO Visualisierung
 
