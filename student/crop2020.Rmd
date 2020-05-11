@@ -91,14 +91,14 @@ fin = merge(kreis3, dtc_long)
 
 # shorten crop names and plot mn_crop
 cropnms = gsub('[.]', ' ', crop_names)
-cropnms[1] = 'Getreide+'
-cropnms[2] = 'Getreide-'
+cropnms[1] = 'Getreidemit'
+cropnms[2] = 'Getreideohne'
 cropnms[7] = 'Hartweizen'
-cropnms[8] = 'Roggen+'
+cropnms[8] = 'Roggenmit'
 cropnms[11] = 'Futtergetreide'
 cropnms[10] = 'Wintergetreide'
 cropnms[16] = 'Sommergetreide'
-cropnms[18] = 'Körnermais+'
+cropnms[18] = 'Körnermaismit'
 cropnms[21] = 'Spätkartoffeln'
 cropnms[24] = 'Leguminosen'
 cropnms[25] = 'Erbsen'
@@ -115,21 +115,21 @@ fin$crop = mapvalues(fin$crop, from = crop_names, to = cropnms)
 
 #crop categories
 Getreide = 'Getreide+' + 'Getreide-' +  'Brotgetreidearten' + 'Wintergetreide' + 'Futtergetreide' +  'Sommergetreide' + 'Titricale'
-Weizen = Winterweizen, Sommerweizen, Rauhfutter Getreideganz, Hartweizen, Weizen
-Roggen = Roggen+, Roggen
-Gerste = Gerste, Wintergerste, sommergerste
-Hafer = Hafer
-Mais = Körnermais, Silomais
-Kartoffeln = Frühkartoffeln, Kartoffeln, Spätkartoffeln
-Rüben = Zuckerrüben, Runkelrüben
-RapsSonne = Winterraps, Sommerraps, Sonnenblumen
-Leguminosen = Leguminosen, Erbsen, Ackerbohnen, Klee, Luzerne, Süßlupinen
-Gras = Wiesen, Weiden, Feldgras
+Weizen = 'Winterweizen' + 'Sommerweizen' + 'Rauhfutter' + 'Getreideganz' + 'Hartweizen'+ 'Weizen'
+Roggen = 'Roggen+' + 'Roggen'
+Gerste = 'Gerste'+ 'Wintergerste'+ 'Sommergerste'
+Hafer = 'Hafer'
+Mais = 'Körnermais' + 'Silomais'
+Kartoffeln = 'Frühkartoffeln'+ 'Kartoffeln'+ 'Spätkartoffeln'
+Rueben = 'Zuckerrüben'+ 'Runkelrüben'
+RapsSonne = 'Winterraps'+ 'Sommerraps'+ 'Sonnenblumen'
+Leguminosen = 'Leguminosen'+ 'Erbsen'+ 'Ackerbohnen'+ 'Klee'+ 'Luzerne'+ 'Süßlupinen'
+Gras = 'Wiesen'+ 'Weiden'+ 'Feldgras'
 
 # TODO reduce crop to categories
 fin2 = fin %>%
   group_by(gen, year, rs, shape_area) %>%
-  summarise()
+  summarise(Getreide = Getreide + Getreide)
 
 
 # Durchschnittsertrag je Feldfrucht in ganz NRW
@@ -176,7 +176,7 @@ mn_cropkreis = fin %>%
 
 # TODO Auswahl der Kategorien und Berechnung eines Index
 
-#TODO Visualisierung
+# TODO Visualisierung
 
 ```
 
