@@ -45,7 +45,7 @@ for (i in seq_along(fl_vec)) {
 # bind list of data.table to one data.table
 dt = rbindlist(l, fill = TRUE, idcol = 'year')
 
-# TODO remove special symbols and convert column types to numeric
+# remove special symbols and convert column types to numeric
 dtc = data.frame(dt)
 for(i in 4:41){
   dtc[,i] =  gsub('[-.x]','0',dtc[,i])
@@ -54,7 +54,7 @@ for(i in 4:41){
 for(i in 4:41){
   dtc[,i] = as.numeric(dtc[,i])
 }
-# TODO bring data into long format (year, rs, gen as identifier variables)
+# bring data into long format (year, rs, gen as identifier variables)
 crop_names = colnames(dtc[,4:41])
 setDT(dtc)
 str(dtc)
@@ -73,9 +73,9 @@ setnames(kreis, tolower(names(kreis)))
 kreis$rs = as.numeric(kreis$rs)
 kreis2 = kreis[ , names(kreis) %in% c('rs', 'rs_alt', 'geom', 'shape_leng', 'shape_area') ]
 mapview(kreis2) # to have an interactive look at the geo data
-# TODO refine to NRW only
+
+# refine to NRW only
 kreis3 = kreis2[0,]
-# kreis3 = as.data.frame[0,]
 for (i in 1:402){
   if (kreis2$rs[i]>5000 & kreis2$rs[i]<6000){
   # add_row(kreis3)
@@ -83,14 +83,14 @@ for (i in 1:402){
   kreis3[nrow(kreis3)+1,] = kreis2[i,]
   }
 }
-mapview(kreis3) # test in mapview
+mapview(kreis3)
 ```
 
 ```{r merge}
 # merge geo and crop data
 fin = merge(kreis3, dtc_long)
 
-# shorten crop names and plot mn_crop
+# shorten crop names
 cropnms = gsub('[.]', ' ', crop_names)
 cropnms[1] = 'Getreidemit'
 cropnms[2] = 'Getreideohne'
@@ -115,24 +115,28 @@ cropnms[37] = 'Silomais'
 fin$crop = mapvalues(fin$crop, from = crop_names, to = cropnms)
 
 #crop categories
-Getreide = 'Getreide+' + 'Getreide-' +  'Brotgetreidearten' + 'Wintergetreide' + 'Futtergetreide' +  'Sommergetreide' + 'Titricale'
-Weizen = 'Winterweizen' + 'Sommerweizen' + 'Rauhfutter' + 'Getreideganz' + 'Hartweizen'+ 'Weizen'
-Roggen = 'Roggen+' + 'Roggen'
-Gerste = 'Gerste'+ 'Wintergerste'+ 'Sommergerste'
-Hafer = 'Hafer'
-Mais = 'Körnermais' + 'Silomais'
-Kartoffeln = 'Frühkartoffeln'+ 'Kartoffeln'+ 'Spätkartoffeln'
-Rueben = 'Zuckerrüben'+ 'Runkelrüben'
-RapsSonne = 'Winterraps'+ 'Sommerraps'+ 'Sonnenblumen'
-Leguminosen = 'Leguminosen'+ 'Erbsen'+ 'Ackerbohnen'+ 'Klee'+ 'Luzerne'+ 'Süßlupinen'
-Gras = 'Wiesen'+ 'Weiden'+ 'Feldgras'
+
+# Getreide = 'Getreidemit' + 'Getreideohne' +  'Brotgetreidearten' + 'Wintergetreide' + 'Futtergetreide' +  'Sommergetreide' + 'Titricale'
+# Weizen = 'Winterweizen' + 'Sommerweizen' + 'Rauhfutter' + 'Getreideganz' + 'Hartweizen'+ 'Weizen'
+# Roggen = 'Roggenmit' + 'Roggen'
+# Gerste = 'Gerste'+ 'Wintergerste'+ 'Sommergerste'
+# Hafer = 'Hafer'
+# Mais = 'Körnermais' + 'Silomais'
+# Kartoffeln = 'Frühkartoffeln'+ 'Kartoffeln'+ 'Spätkartoffeln'
+# Rueben = 'Zuckerrüben'+ 'Runkelrüben'
+# RapsSonne = 'Winterraps'+ 'Sommerraps'+ 'Sonnenblumen'
+# Leguminosen = 'Leguminosen'+ 'Erbsen'+ 'Ackerbohnen'+ 'Klee'+ 'Luzerne'+ 'Süßlupinen'
+# Gras = 'Wiesen'+ 'Weiden'+ 'Feldgras'
 
 # TODO reduce crop to categories
 fin2 = fin %>%
   group_by(gen, year, rs, shape_area) %>%
-  summarise(Getreide = Getreide + Getreide)
+  summarise(sum(crop))
+```
 
+## Manipulate data and visualize
 
+```{r manipulate}
 # Durchschnittsertrag je Feldfrucht in ganz NRW
 mn_crop = fin %>% 
   group_by(crop) %>%
@@ -180,6 +184,8 @@ mn_cropkreis = fin %>%
 # TODO Visualisierung
 
 ```
+
+## Merge with pesticide data
 
 ```{r data-spatial-pesticides}
 nrw2 = readRDS(file.path('data/nrw', 'nrw_sites.rds')) # spatial sites data
