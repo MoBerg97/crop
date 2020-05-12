@@ -141,7 +141,7 @@ fin2$crop = mapvalues(fin2$crop, from= c('Leguminosen','Erbsen','Ackerbohnen','K
 fin2$crop = mapvalues(fin2$crop, from= c('Wiesen','Weiden','Feldgras','Rauhfutter'),to= c('Gras','Gras','Gras','Gras'))
 
 
-# TODO consolidate rows with allover same values, but different dt.ha
+# consolidate rows with allover same values, but different dt.ha
 fin2 = fin2 %>%
   group_by(rs,shape_area,geom,year,gen,crop) %>%
   summarise(dt.ha = sum(dt.ha,na.rm = TRUE))
