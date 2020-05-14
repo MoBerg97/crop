@@ -72,7 +72,7 @@ kreis = st_read(file.path('data', 'germany_kreis.shp'), stringsAsFactors = FALSE
 setnames(kreis, tolower(names(kreis)))
 kreis$rs = as.numeric(kreis$rs)
 kreis2 = kreis[ , names(kreis) %in% c('rs', 'rs_alt', 'geom', 'shape_leng', 'shape_area') ]
-mapview(kreis2) # to have an interactive look at the geo data
+# mapview(kreis2) # to have an interactive look at the geo data
 
 # refine to NRW only
 kreis3 = kreis2[0,]
@@ -83,7 +83,7 @@ for (i in 1:402){
   kreis3[nrow(kreis3)+1,] = kreis2[i,]
   }
 }
-mapview(kreis3)
+# mapview(kreis3)
 ```
 
 ```{r merge}
@@ -129,7 +129,7 @@ fin$crop = mapvalues(fin$crop, from = crop_names, to = cropnms)
 
 #create duplicate of fin with crops categorized
 fin2 = fin
-fin2$crop = mapvalues(fin2$crop, from= c('Getreidemit','Getreideohne','Brotgetreidearten','Wintergetreide','Futtergetreide','Sommergetreide','Titricale'), to= c('Getreide','Getreide','Getreide','Getreide','Getreide','Getreide','Getreide'))
+fin2$crop = mapvalues(fin2$crop, from= c('Getreidemit','Getreideohne','Brotgetreidearten','Wintergetreide','Futtergetreide','Sommergetreide','Triticale'), to= c('Getreide','Getreide','Getreide','Getreide','Getreide','Getreide','Getreide'))
 fin2$crop = mapvalues(fin2$crop, from= c('Winterweizen','Sommerweizen','Getreideganz','Hartweizen','Weizen'), to= c('Weizen','Weizen','Weizen','Weizen','Weizen'))
 fin2$crop = mapvalues(fin2$crop, from= c('Roggenmit','Roggen'), to=c('Roggen','Roggen'))
 fin2$crop = mapvalues(fin2$crop, from= c('Gerste','Wintergerste','Sommergerste'), to= c('Gerste','Gerste','Gerste'))
@@ -193,7 +193,7 @@ mn_cropkreis = fin %>%
   group_by(crop, gen) %>%
   summarise(mean(dt.ha))
   
-# TODO Durchschnittsertrag je wichtige Feldfrucht pro Kreis
+# Durchschnittsertrag je wichtige Feldfrucht pro Kreis
 for (i in 1:length(cropnms2)){
 mn_cropkreis2 = fin2 %>%
   group_by(crop,gen) %>%
@@ -206,16 +206,21 @@ print(
   ggtitle(cropnms2[i], subtitle = 'yield in dt per ha')
 )
 }
+# Ertrag für Winter / Sommer crops
+wintercrops = c('Winterweizen','Winterraps',)
+mn_Winter = fin %>%
+  group_by()
 
 # TODO Auswahl der Kategorien und Berechnung eines Index
-# schauen ob sich crops Anbauzeiten decken oder ergänzen
-# schauen ob was intesiverer Bearbeitung bedarf
+
 
 # TODO Visualisierung
 
 ```
 
 ## Merge with pesticide data
+
+To compare the crop yield with the pesticide usage, the sum of pesticide sample values were calculated for each district.
 
 ```{r data-spatial-pesticides}
 nrw2 = readRDS(file.path('data/nrw', 'nrw_sites.rds')) # spatial sites data
@@ -225,21 +230,23 @@ nrw_sam$site_id = gsub('_....-..-..','',nrw_sam$sample_id)
 
 pest = merge(nrw2, nrw_sam)
 
-#Summe der Messwerte pro Site
-sum_pest = pest %>%
-  group_by(site_id) %>%
-  summarise(sum_value = sum(value, na.rm = TRUE))
+# #Summe der Messwerte pro Site
+# sum_pest = pest %>%
+#   group_by(site_id) %>%
+#   mutate(sum_value = sum(value, na.rm = TRUE))
+# 
+# sum_district = sum_pest %>%
+#   group_by(gen)
 
-mapview(sum_pest)
+#TODO Intersection --> Karte der Pestizide mit intensiver LW-Fläche vergleichen
+st_crs(pest)
+st_crs(mn_kreis)
+mn_kreis = st_transform(mn_kreis, crs = st_crs(pest))
+pestcrop = st_intersection(pest, mn_kreis)
 
-#TODO summe der Messwerte pro Site pro PSM-Typ
-
-
-#TODO Karte der Pestizide mit intensiver LW-Fläche vergleichen
+#TODO calculate sum of pest sample values for each district
 
 #TODO Visualisierung
-
-#TODO Intersection + Visualisierung
 
 ```
 
