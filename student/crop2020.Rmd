@@ -195,28 +195,26 @@ mn_cropjahr = fin %>%
 # Durchschnittsertrag je Feldfrucht je Kreis 
 mn_cropkreis = fin %>%
   group_by(crop, gen) %>%
-  summarise(mean(dt.ha))
-  
+  summarise(mn_dt = mean(dt.ha))
+
+
 # Durchschnittsertrag je wichtige Feldfrucht pro Kreis
+l = list()
 for (i in 1:length(cropnms2)){
 mn_cropkreis2 = fin2 %>%
   group_by(crop,gen) %>%
   summarise(mn_dt = mean(dt.ha)) %>%
   filter(crop == cropnms2[i])
-  
-print(
-  ggplot(data = mn_cropkreis2) +
+  l[[i]] =  ggplot(data = mn_cropkreis2) +
   geom_sf(aes(fill = mn_dt)) + 
-  ggtitle(cropnms2[i], subtitle = 'yield in dt per ha')
-)
-}
-# Ertrag für Winter / Sommer crops
-wintercrops = c('Winterweizen','Winterraps',)
-mn_Winter = fin %>%
-  group_by()
+    scale_fill_gradient(limits = c(0, 1000)) +
+  ggtitle(cropnms2[i])#, subtitle = 'yield in dt per ha')
+    }
+do.call(grid.arrange, l)
+
 
 # TODO Auswahl der Kategorien und Berechnung eines Index
-
+crop_index = fin2 
 
 # TODO Visualisierung
 
