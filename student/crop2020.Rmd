@@ -169,29 +169,37 @@ ggplot(mn_crop, aes(x=crop,y=mn_dt)) +
 # Durchschnittsertrag je Kreis
 mn_kreis = fin %>%
   group_by(gen) %>%
-  summarise(mean(dt.ha))
-
-mapview(mn_kreis)
+  summarise(mn_dt = mean(dt.ha))
 
 # Durchschnittsertrag je Jahr
 mn_jahr = fin %>%
   group_by(year) %>%
-  summarise(mean(dt.ha))
+  summarise(mn_dt = mean(dt.ha))
+
+ggplot(mn_jahr, aes(x=year,y=mn_dt)) + 
+  geom_bar(stat = "identity") +
+  theme(axis.text.x = element_text(angle = 90, size = 9, vjust = 0))
 
 # Durchschnittsertrag je Jahr je Feldfrucht
-
 mn_cropjahr = fin %>%
   group_by(year, crop) %>%
-  summarise(mean(dt.ha))
+  summarise(mn_dt = mean(dt.ha))
 
-#FOLGENDES MACHT KEINEN SINN DA ERTRAG JA SCHON PRO FLÄCHE IST
-# # Durchschnittsertrag je Kreis pro Fläche mit anständiger Formel
-# mn_kreispa = fin %>%
-#   group_by(gen) %>%
-#   summarise(mn_dt = mean(dt.ha)/mean(shape_area)) #!!!
-# 
-# plot(mn_kreispa)
+mn_cropjahr$year = as.factor(mn_cropjahr$year)
 
+ggplot(mn_cropjahr, aes(x=year,y=mn_dt, group = crop, colour = crop)) + 
+  ggtitle('Fig.1 Average yield of crops for each year from 2005 to 2015') +
+  geom_point() +
+  geom_line() +
+  theme(axis.text.x = element_text(angle = 90, size = 9, vjust = 0)) +
+  scale_colour_discrete(name  ="crop", l=60, breaks=cropnms, labels=cropnms)
+  
+```
+
+The graph shows, that some previously largely harvested crops, fell significantly.
+Therefore a distinction between the years from 2005 to 2006, from 2007 to 2009 and from 2010 to 2015 was useful.
+
+```{r-manipulate}
 # Durchschnittsertrag je Feldfrucht je Kreis 
 mn_cropkreis = fin %>%
   group_by(crop, gen) %>%
