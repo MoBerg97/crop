@@ -17,6 +17,10 @@ require(dplyr)
 require(ggplot2)
 require(forcats)
 require(tidyr)
+require(tmap)
+require(grid)
+require(gridExtra)
+require(funchir) #delete after checking which packages are unused with stale_package_check('crop.Rmd')
 ```
 
 ## Harvest data
