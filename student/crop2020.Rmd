@@ -155,7 +155,7 @@ cropnms2 = unique(fin2$crop)
 
 ## Manipulate data and visualize
 
-```{r manipulate}
+```{r overview crops}
 # Durchschnittsertrag je Feldfrucht in ganz NRW
 mn_crop = fin %>% 
   group_by(crop) %>%
@@ -180,32 +180,42 @@ ggplot(mn_jahr, aes(x=year,y=mn_dt)) +
   geom_bar(stat = "identity") +
   theme(axis.text.x = element_text(angle = 90, size = 9, vjust = 0))
 
-# Durchschnittsertrag je Jahr je Feldfrucht
+# Durchschnittsertrag je Feldfrucht je Kreis 
+mn_cropkreis = fin %>%
+  group_by(crop, gen) %>%
+  summarise(mn_dt = mean(dt.ha))
+```
+
+```{r overview year}
+# average yield of crops per year
 mn_cropjahr = fin %>%
   group_by(year, crop) %>%
   summarise(mn_dt = mean(dt.ha))
 
+cropnmsyear = unique(mn_cropjahr$crop)
 mn_cropjahr$year = as.factor(mn_cropjahr$year)
 
-ggplot(mn_cropjahr, aes(x=year,y=mn_dt, group = crop, colour = crop)) + 
+highyield = ggplot(filter(mn_cropjahr,mn_dt>100), aes(x=year,y=mn_dt, group = crop, colour = crop)) + 
   ggtitle('Fig.1 Average yield of crops for each year from 2005 to 2015') +
   geom_point() +
   geom_line() +
   theme(axis.text.x = element_text(angle = 90, size = 9, vjust = 0)) +
-  scale_colour_discrete(name  ="crop", l=60, breaks=cropnms, labels=cropnms)
-  
+  scale_colour_discrete(name  ="crop", l=60, breaks=cropnmsyear, labels=cropnmsyear)
+
+lowyield = ggplot(filter(mn_cropjahr,mn_dt<100), aes(x=year,y=mn_dt, group=crop)) + 
+  ggtitle('Fig.1 Average yield of crops for each year from 2005 to 2015') +
+  geom_point() +
+  geom_line() + 
+  geom_smooth(aes(group = crop), method = "lm", se = TRUE) +
+  theme(axis.text.x = element_text(angle = 90, size = 9, vjust = 0))
+
+highyield+lowyield
 ```
 
 The graph shows, that some previously largely harvested crops, fell significantly.
 Therefore a distinction between the years from 2005 to 2006, from 2007 to 2009 and from 2010 to 2015 was useful.
 
-```{r-manipulate}
-# Durchschnittsertrag je Feldfrucht je Kreis 
-mn_cropkreis = fin %>%
-  group_by(crop, gen) %>%
-  summarise(mn_dt = mean(dt.ha))
-
-
+```{r manipulate}
 # Durchschnittsertrag je wichtige Feldfrucht pro Kreis
 l = list()
 for (i in 1:length(cropnms2)){
@@ -219,10 +229,11 @@ mn_cropkreis2 = fin2 %>%
   ggtitle(cropnms2[i])#, subtitle = 'yield in dt per ha')
     }
 do.call(grid.arrange, l)
+```
 
-
+```{r inndex}
 # TODO Auswahl der Kategorien und Berechnung eines Index
-crop_index = fin2 
+
 
 # TODO Visualisierung
 
