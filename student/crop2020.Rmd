@@ -88,12 +88,12 @@ for (i in 1:402){
   }
 }
 # mapview(kreis3)
+nrw = st_union(st_geometry(kreis3))
 ```
 
 ```{r merge and categorize}
 # merge geo and crop data
 fin = merge(kreis3, dtc_long)
-
 # shorten crop names
 cropnms = gsub('[.]', ' ', crop_names)
 cropnms[1] = 'Getreidemit'
@@ -115,9 +115,7 @@ cropnms[35] = 'Klee'
 cropnms[37] = 'Silomais'
 
 # rename crops
-
 fin$crop = mapvalues(fin$crop, from = crop_names, to = cropnms)
-
 #crop categories
 # Getreide = 'Getreidemit' , 'Getreideohne' ,  'Brotgetreidearten' , 'Wintergetreide' , 'Futtergetreide' ,  'Sommergetreide' , 'Titricale'
 # Weizen = 'Winterweizen' , 'Sommerweizen'  , 'Getreideganz' , 'Hartweizen', 'Weizen'
@@ -130,7 +128,6 @@ fin$crop = mapvalues(fin$crop, from = crop_names, to = cropnms)
 # RapsSonne = 'Winterraps', 'Sommerraps', 'Sonnenblumen'
 # Leguminosen = 'Leguminosen', 'Erbsen', 'Ackerbohnen', 'Klee', 'Luzerne', 'Süßlupinen'
 # Gras = 'Wiesen', 'Weiden', 'Feldgras', 'Rauhfutter'
-
 #create duplicate of fin with crops categorized
 fin2 = fin
 fin2$crop = mapvalues(fin2$crop, from= c('Getreidemit','Getreideohne','Brotgetreidearten','Wintergetreide','Futtergetreide','Sommergetreide','Triticale'), to= c('Getreide','Getreide','Getreide','Getreide','Getreide','Getreide','Getreide'))
@@ -144,12 +141,11 @@ fin2$crop = mapvalues(fin2$crop, from= c('Winterraps','Sommerraps','Sonnenblumen
 fin2$crop = mapvalues(fin2$crop, from= c('Leguminosen','Erbsen','Ackerbohnen','Klee','Luzerne','Süßlupinen'),to= c('Leguminosen','Leguminosen','Leguminosen','Leguminosen','Leguminosen','Leguminosen'))
 fin2$crop = mapvalues(fin2$crop, from= c('Wiesen','Weiden','Feldgras','Rauhfutter'),to= c('Gras','Gras','Gras','Gras'))
 
-
 # consolidate rows with allover same values, but different dtha
 fin2 = fin2 %>%
   group_by(rs,shape_area,geom,year,gen,crop) %>%
   summarise(dtha = sum(dtha,na.rm = TRUE))
-
+#vector of crop category names
 cropnms2 = unique(fin2$crop)
 ```
 
@@ -166,7 +162,6 @@ ggplot(mn_crop, aes(x=crop,y=mn_dt)) +
   theme(axis.text.x = element_text(angle = 90, size = 9, vjust = 0))+
   scale_x_discrete(labels=cropnms) +
   
-
 # average yield per district
 mn_kreis = fin %>%
   group_by(gen) %>%
@@ -246,7 +241,7 @@ cropindex15 = fin2 %>%
   summarise(mn_dt=mean(dtha))
 
 # TODO Visualisierung
-
+tm_shape(nrw) + tm_fill()
 ```
 
 ## Merge with pesticide data
