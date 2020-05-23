@@ -156,7 +156,7 @@ cropnms2 = unique(fin2$crop)
 ## Manipulate data and visualize
 
 ```{r overview crops}
-# Durchschnittsertrag je Feldfrucht in ganz NRW
+# average yield per crop
 mn_crop = fin %>% 
   group_by(crop) %>%
   summarise(mn_dt = mean(dt.ha))
@@ -164,21 +164,13 @@ mn_crop = fin %>%
 ggplot(mn_crop, aes(x=crop,y=mn_dt)) + 
   geom_bar(stat = "identity") +
   theme(axis.text.x = element_text(angle = 90, size = 9, vjust = 0))+
-  scale_x_discrete(labels=cropnms)
+  scale_x_discrete(labels=cropnms) +
+  
 
-# Durchschnittsertrag je Kreis
+# average yield per district
 mn_kreis = fin %>%
   group_by(gen) %>%
   summarise(mn_dt = mean(dt.ha))
-
-# Durchschnittsertrag je Jahr
-mn_jahr = fin %>%
-  group_by(year) %>%
-  summarise(mn_dt = mean(dt.ha))
-
-ggplot(mn_jahr, aes(x=year,y=mn_dt)) + 
-  geom_bar(stat = "identity") +
-  theme(axis.text.x = element_text(angle = 90, size = 9, vjust = 0))
 
 # Durchschnittsertrag je Feldfrucht je Kreis 
 mn_cropkreis = fin %>%
@@ -187,7 +179,16 @@ mn_cropkreis = fin %>%
 ```
 
 ```{r overview year}
-# average yield of crops per year
+# average yield per year
+mn_jahr = fin %>%
+  group_by(year) %>%
+  summarise(mn_dt = mean(dt.ha))
+
+ggplot(mn_jahr, aes(x=year,y=mn_dt)) + 
+  geom_bar(stat = "identity") +
+  theme(axis.text.x = element_text(angle = 90, size = 9, vjust = 0))
+
+# average yield per crop per year
 mn_cropjahr = fin %>%
   group_by(year, crop) %>%
   summarise(mn_dt = mean(dt.ha))
@@ -195,28 +196,25 @@ mn_cropjahr = fin %>%
 cropnmsyear = unique(mn_cropjahr$crop)
 mn_cropjahr$year = as.factor(mn_cropjahr$year)
 
-highyield = ggplot(filter(mn_cropjahr,mn_dt>100), aes(x=year,y=mn_dt, group = crop, colour = crop)) + 
-  ggtitle('Fig.1 Average yield of crops for each year from 2005 to 2015') +
-  geom_point() +
-  geom_line() +
-  theme(axis.text.x = element_text(angle = 90, size = 9, vjust = 0)) +
-  scale_colour_discrete(name  ="crop", l=60, breaks=cropnmsyear, labels=cropnmsyear)
+#TODO crops over 100dt/ha in legend. Other crops withoout legend (or colours)
+# ggplot() + 
+#   ggtitle('Fig.1 Average yield of crops for each year from 2005 to 2015') +
+#   geom_point(filter(mn_cropjahr,mn_dt>100),aes(x=year,y=mn_dt, group = crop, colour = crop)) +
+#   geom_line(filter(mn_cropjahr,mn_dt>100),aes(x=year,y=mn_dt, group = crop, colour = crop)) +
+#   theme(axis.text.x = element_text(angle = 90, size = 9, vjust = 0)) +
+#   scale_colour_discrete(name  ="crop", l=60, breaks=cropnmsyear, labels=cropnmsyear) +
+#   geom_point(filter(mn_cropjahr,mn_dt<100), aes(x=year,y=mn_dt, group=crop)) +
+#   geom_line(filter(mn_cropjahr,mn_dt<100), aes(x=year,y=mn_dt, group=crop)) + 
+#   geom_smooth(filter(mn_cropjahr,mn_dt<100), aes(group = crop), method = "lm", se = TRUE) +
+#   theme(axis.text.x = element_text(angle = 90, size = 9, vjust = 0))
 
-lowyield = ggplot(filter(mn_cropjahr,mn_dt<100), aes(x=year,y=mn_dt, group=crop)) + 
-  ggtitle('Fig.1 Average yield of crops for each year from 2005 to 2015') +
-  geom_point() +
-  geom_line() + 
-  geom_smooth(aes(group = crop), method = "lm", se = TRUE) +
-  theme(axis.text.x = element_text(angle = 90, size = 9, vjust = 0))
-
-highyield+lowyield
 ```
 
-The graph shows, that some previously largely harvested crops, fell significantly.
-Therefore a distinction between the years from 2005 to 2006, from 2007 to 2009 and from 2010 to 2015 was useful.
+The graph shows, that some previously largely harvested crops fell significantly in yield below the 100 dt per ha mark.
+Therefore a distinction between the years from 2005 to 2006, from 2007 to 2009 and from 2010 to 2015 could be useful.
 
 ```{r manipulate}
-# Durchschnittsertrag je wichtige Feldfrucht pro Kreis
+# average yield of each categorized crops per district
 l = list()
 for (i in 1:length(cropnms2)){
 mn_cropkreis2 = fin2 %>%
@@ -246,28 +244,23 @@ To compare the crop yield with the pesticide usage, the sum of pesticide sample 
 ```{r data-spatial-pesticides}
 nrw2 = readRDS(file.path('data/nrw', 'nrw_sites.rds')) # spatial sites data
 nrw_sam = readRDS(file.path('data/nrw', 'nrw_samples.rds')) # pesticide samples
-
 nrw_sam$site_id = gsub('_....-..-..','',nrw_sam$sample_id)
-
 pest = merge(nrw2, nrw_sam)
 
 # #Summe der Messwerte pro Site
 # sum_pest = pest %>%
 #   group_by(site_id) %>%
 #   mutate(sum_value = sum(value, na.rm = TRUE))
-# 
-# sum_district = sum_pest %>%
-#   group_by(gen)
 
-#TODO Intersection --> Karte der Pestizide mit intensiver LW-Fläche vergleichen
+#TODO Intersection 
 st_crs(pest)
 st_crs(mn_kreis)
 mn_kreis = st_transform(mn_kreis, crs = st_crs(pest))
-pestcrop = st_intersection(pest, mn_kreis)
+pestcrop = st_intersection(pest, mn_kreis) #insert crop index dataframe here
 
-#TODO calculate sum of pest sample values for each district
-
-#TODO Visualisierung
+#TODO calculate pest index
+ 
+#TODO visualize
 
 ```
 
