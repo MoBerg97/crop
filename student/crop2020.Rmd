@@ -1,5 +1,5 @@
 ---
-title: "Crop data"
+title: 'Crop data'
 output: html_document
 editor_options: 
   chunk_output_type: console
@@ -20,6 +20,7 @@ require(tidyr)
 require(tmap)
 require(grid)
 require(gridExtra)
+library(RColorBrewer)
 require(funchir) #delete after checking which packages are unused with stale_package_check('crop.Rmd')
 ```
 
@@ -62,7 +63,7 @@ for(i in 4:41){
 crop_names = colnames(dtc[,4:41])
 setDT(dtc)
 str(dtc)
-dtc_long = melt(dtc, id.vars = c("year","rs","gen"), measure.vars = crop_names, variable.name = 'crop', value.name = 'dtha' )
+dtc_long = melt(dtc, id.vars = c('year','rs','gen'), measure.vars = crop_names, variable.name = 'crop', value.name = 'dtha' )
 ```
 
 (1) Shapefiles der Kreise Deutschlands werden eingelesen.
@@ -76,34 +77,32 @@ kreis = st_read(file.path('data', 'germany_kreis.shp'), stringsAsFactors = FALSE
 setnames(kreis, tolower(names(kreis)))
 kreis$rs = as.numeric(kreis$rs)
 kreis2 = kreis[ , names(kreis) %in% c('rs', 'rs_alt', 'geom', 'shape_leng', 'shape_area') ]
-# mapview(kreis2) # to have an interactive look at the geo data
-
 # refine to NRW only
 kreis3 = kreis2[0,]
 for (i in 1:402){
   if (kreis2$rs[i]>5000 & kreis2$rs[i]<6000){
-  # add_row(kreis3)
     rbind(kreis3)
   kreis3[nrow(kreis3)+1,] = kreis2[i,]
   }
 }
-# mapview(kreis3)
+#nrw as a whole geometry for visualization purposes
 nrw = st_union(st_geometry(kreis3))
 ```
 
+To organize the data, the crops were renamed and categorized in another column into 11 factors.
 ```{r merge and categorize}
 # merge geo and crop data
 fin = merge(kreis3, dtc_long)
 # shorten crop names
 cropnms = gsub('[.]', ' ', crop_names)
-cropnms[1] = 'Getreidemit'
-cropnms[2] = 'Getreideohne'
+cropnms[1] = 'GetreidemitCCM'
+cropnms[2] = 'GetreideohneCCM'
 cropnms[7] = 'Hartweizen'
 cropnms[8] = 'Roggenmit'
 cropnms[11] = 'Futtergetreide'
 cropnms[10] = 'Wintergetreide'
 cropnms[16] = 'Sommergetreide'
-cropnms[18] = 'Körnermaismit'
+cropnms[18] = 'KörnermaismitCCM'
 cropnms[21] = 'Spätkartoffeln'
 cropnms[24] = 'Leguminosen'
 cropnms[25] = 'Erbsen'
@@ -111,62 +110,45 @@ cropnms[28] = 'Sommerraps'
 cropnms[31] = 'Getreideganz'
 cropnms[33] = 'Weiden'
 cropnms[34] = 'Feldgras'
-cropnms[35] = 'Klee'
+cropnms[35] = 'KleeLuzerne'
 cropnms[37] = 'Silomais'
 
 # rename crops
 fin$crop = mapvalues(fin$crop, from = crop_names, to = cropnms)
-#crop categories
-# Getreide = 'Getreidemit' , 'Getreideohne' ,  'Brotgetreidearten' , 'Wintergetreide' , 'Futtergetreide' ,  'Sommergetreide' , 'Titricale'
-# Weizen = 'Winterweizen' , 'Sommerweizen'  , 'Getreideganz' , 'Hartweizen', 'Weizen'
-# Roggen = 'Roggenmit' , 'Roggen'
-# Gerste = 'Gerste', 'Wintergerste', 'Sommergerste'
-# Hafer = 'Hafer'
-# Mais = 'Körnermais' , 'Silomais'
-# Kartoffeln = 'Frühkartoffeln', 'Kartoffeln', 'Spätkartoffeln'
-# Rüben = 'Zuckerrüben', 'Runkelrüben'
-# RapsSonne = 'Winterraps', 'Sommerraps', 'Sonnenblumen'
-# Leguminosen = 'Leguminosen', 'Erbsen', 'Ackerbohnen', 'Klee', 'Luzerne', 'Süßlupinen'
-# Gras = 'Wiesen', 'Weiden', 'Feldgras', 'Rauhfutter'
-#create duplicate of fin with crops categorized
+
 fin = fin %>%
   mutate(cropcat = plyr::mapvalues(crop, 
-            from= c('Getreidemit','Getreideohne','Brotgetreidearten','Wintergetreide','Futtergetreide','Sommergetreide','Triticale'), 
+            from= c('GetreidemitCCM','GetreideohneCCM','Brotgetreidearten','Wintergetreide','Futtergetreide','Sommergetreide','Triticale'), 
             to= c('Getreide','Getreide','Getreide','Getreide','Getreide','Getreide','Getreide'))) %>%
-  mutate(cropcat = plyr::mapvalues(crop, 
+  mutate(cropcat = plyr::mapvalues(cropcat, 
             from= c('Winterweizen','Sommerweizen','Getreideganz','Hartweizen','Weizen'), 
             to= c('Weizen','Weizen','Weizen','Weizen','Weizen'))) %>%
-  mutate(cropcat = plyr::mapvalues(crop, 
+  mutate(cropcat = plyr::mapvalues(cropcat, 
             from= c('Roggenmit','Roggen'), 
             to=c('Roggen','Roggen'))) %>%
-  mutate(cropcat = plyr::mapvalues(crop, 
+  mutate(cropcat = plyr::mapvalues(cropcat, 
             from= c('Gerste','Wintergerste','Sommergerste'), 
             to= c('Gerste','Gerste','Gerste'))) %>%
-  mutate(cropcat = plyr::mapvalues(crop, 
-            from= c('Körnermaismit','Silomais'),
+  mutate(cropcat = plyr::mapvalues(cropcat, 
+            from= c('KörnermaismitCCM','Silomais'),
             to= c('Mais','Mais'))) %>%
-  mutate(cropcat = plyr::mapvalues(crop, 
+  mutate(cropcat = plyr::mapvalues(cropcat, 
             from= c('Frühkartoffeln','Kartoffeln','Spätkartoffeln'),
             to= c('Kartoffeln','Kartoffeln','Kartoffeln'))) %>%
-  mutate(cropcat = plyr::mapvalues(crop, 
+  mutate(cropcat = plyr::mapvalues(cropcat, 
             from= c('Zuckerrüben','Runkelrüben'),
             to= c('Rüben','Rüben')))%>%
-  mutate(cropcat = plyr::mapvalues(crop, 
+  mutate(cropcat = plyr::mapvalues(cropcat, 
             from= c('Winterraps','Sommerraps','Sonnenblumen'),
             to= c('RapsSonne','RapsSonne','RapsSonne'))) %>%
-  mutate(cropcat = plyr::mapvalues(crop, 
-            from= c('Leguminosen','Erbsen','Ackerbohnen','Klee','Luzerne','Süßlupinen'),
+  mutate(cropcat = plyr::mapvalues(cropcat, 
+            from= c('Leguminosen','Erbsen','Ackerbohnen','KleeLuzerne','Luzerne','Süßlupinen'),
             to= c('Leguminosen','Leguminosen','Leguminosen','Leguminosen','Leguminosen','Leguminosen'))) %>%
-  mutate(cropcat = plyr::mapvalues(crop, 
+  mutate(cropcat = plyr::mapvalues(cropcat, 
             from= c('Wiesen','Weiden','Feldgras','Rauhfutter'),
             to= c('Gras','Gras','Gras','Gras')))
-
-# consolidate rows with allover same values, but different dtha
-# fin = fin %>%
-#   group_by(rs,shape_area,geom,year,gen,crop) %>%
-#   summarise(dtha = sum(dtha,na.rm = TRUE))
-#vector of crop category names
-cropnms2 = unique(fin$crop)
+cropcatnms = unique(fin$cropcat)
+# TODO maybe delete unecessary columns
 ```
 
 ## Manipulate data and visualize
@@ -174,14 +156,23 @@ cropnms2 = unique(fin$crop)
 ```{r overview crops}
 # average yield per crop
 mn_crop = fin %>% 
-  group_by(crop) %>%
+  group_by(crop,cropcat) %>%
   summarise(mn_dt = mean(dtha)) %>%
-  mutate()
+  arrange(crop, cropcat)
 
-ggplot(mn_crop, aes(x=crop,y=mn_dt)) + 
-  geom_bar(stat = "identity") +
-  theme(axis.text.x = element_text(angle = 90, size = 9, vjust = 0)) +
-  scale_x_discrete(labels=cropnms)
+ggplot(mn_crop, aes(x=crop,y=mn_dt,  fill = cropcat)) + 
+  geom_bar(stat = 'identity', width = 0.8) +
+  theme(axis.text.x = element_text(angle = 45, size = 9, vjust = 1, hjust = 1)) +
+  labs(fill = 'crop categoy', y = 'dt/ha', x = '') +
+  scale_fill_brewer(palette='RdYlBu') +
+  ggtitle('Fig.1 Average yield of crops')
+
+ggplot(mn_crop, aes(x=cropcat,y=mn_dt,  fill = cropcat)) + 
+  geom_bar(stat = 'identity', width = 0.8) +
+  theme(axis.text.x = element_text(angle = 45, size = 9, vjust = 1, hjust = 1), legend.position ='none') +
+  labs(fill = 'crop categoy', y = 'dt/ha', x = '') +
+  scale_fill_brewer(palette='RdYlBu') +
+  ggtitle('Fig.2 Average yield per crop category')
   
 # average yield per district
 mn_kreis = fin %>%
@@ -201,8 +192,9 @@ mn_jahr = fin %>%
   summarise(mn_dt = mean(dtha))
 
 ggplot(mn_jahr, aes(x=year,y=mn_dt)) + 
-  geom_bar(stat = "identity") +
-  theme(axis.text.x = element_text(angle = 90, size = 9, vjust = 0))
+  geom_bar(stat = 'identity', width =0.8) +
+  theme(axis.text.x = element_text(angle = 45, size = 9, vjust = 1, hjust = 1)) +
+  ggtitle('Fig.3 Average yield per year')
 
 # average yield per crop per year
 mn_cropjahr = fin %>%
@@ -214,14 +206,14 @@ mn_cropjahr$year = as.factor(mn_cropjahr$year)
 
 #TODO crops over 100dt/ha in legend. Other crops withoout legend (or colours)
 ggplot() +
-  ggtitle('Fig.1 Average yield of crops for each year from 2005 to 2015') +
+  ggtitle('Fig.4 Average yield of crops for each year from 2005 to 2015') +
   geom_point(filter(mn_cropjahr,mn_dt>100),aes(x=year,y=mn_dt, group = crop, colour = crop)) +
   geom_line(filter(mn_cropjahr,mn_dt>100),aes(x=year,y=mn_dt, group = crop, colour = crop)) +
   theme(axis.text.x = element_text(angle = 90, size = 9, vjust = 0)) +
-  scale_colour_discrete(name  ="crop", l=60, breaks=cropnmsyear, labels=cropnmsyear) +
+  scale_colour_discrete(name  ='crop', l=60, breaks=cropnmsyear, labels=cropnmsyear) +
   geom_point(filter(mn_cropjahr,mn_dt<100), aes(x=year,y=mn_dt, group=crop)) +
   geom_line(filter(mn_cropjahr,mn_dt<100), aes(x=year,y=mn_dt, group=crop)) +
-  geom_smooth(filter(mn_cropjahr,mn_dt<100), aes(group = crop), method = "lm", se = TRUE) +
+  geom_smooth(filter(mn_cropjahr,mn_dt<100), aes(group = crop), method = 'lm', se = TRUE) +
   theme(axis.text.x = element_text(angle = 90, size = 9, vjust = 0))
 ```
 
@@ -231,17 +223,17 @@ Therefore a distinction between the years from 2005 to 2006, from 2007 to 2009 a
 ```{r crops of district}
 # average yield of each categorized crops per district
 l = list()
-for (i in 1:length(cropnms2)){
+for (i in 1:length(cropcatnms)){
 mn_cropkreis2 = fin %>%
   group_by(crop,gen) %>%
   summarise(mn_dt = mean(dtha)) %>%
-  filter(crop == cropnms2[i])
+  filter(crop == cropcatnms[i])
   l[[i]] =  ggplot(data = mn_cropkreis2) +
   geom_sf(aes(fill = mn_dt)) + 
     scale_fill_gradient(limits = c(0, 1000)) +
-  ggtitle(cropnms2[i])#, subtitle = 'yield in dt per ha')
+  ggtitle(cropcatnms[i])#, subtitle = 'yield in dt per ha')
     }
-do.call(grid.arrange, c(l, top="Fig.2 Average yield of each crop category per district"))
+do.call(grid.arrange, c(l, top='Fig.5 Average yield of each crop category per district'))
 ```
 
 ```{r crop index}
