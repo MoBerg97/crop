@@ -129,24 +129,44 @@ fin$crop = mapvalues(fin$crop, from = crop_names, to = cropnms)
 # Leguminosen = 'Leguminosen', 'Erbsen', 'Ackerbohnen', 'Klee', 'Luzerne', 'Süßlupinen'
 # Gras = 'Wiesen', 'Weiden', 'Feldgras', 'Rauhfutter'
 #create duplicate of fin with crops categorized
-fin2 = fin
-fin2$crop = mapvalues(fin2$crop, from= c('Getreidemit','Getreideohne','Brotgetreidearten','Wintergetreide','Futtergetreide','Sommergetreide','Triticale'), to= c('Getreide','Getreide','Getreide','Getreide','Getreide','Getreide','Getreide'))
-fin2$crop = mapvalues(fin2$crop, from= c('Winterweizen','Sommerweizen','Getreideganz','Hartweizen','Weizen'), to= c('Weizen','Weizen','Weizen','Weizen','Weizen'))
-fin2$crop = mapvalues(fin2$crop, from= c('Roggenmit','Roggen'), to=c('Roggen','Roggen'))
-fin2$crop = mapvalues(fin2$crop, from= c('Gerste','Wintergerste','Sommergerste'), to= c('Gerste','Gerste','Gerste'))
-fin2$crop = mapvalues(fin2$crop, from= c('Körnermaismit','Silomais'),to= c('Mais','Mais'))
-fin2$crop = mapvalues(fin2$crop, from= c('Frühkartoffeln','Kartoffeln','Spätkartoffeln'),to= c('Kartoffeln','Kartoffeln','Kartoffeln'))
-fin2$crop = mapvalues(fin2$crop, from= c('Zuckerrüben','Runkelrüben'),to= c('Rüben','Rüben'))
-fin2$crop = mapvalues(fin2$crop, from= c('Winterraps','Sommerraps','Sonnenblumen'),to= c('RapsSonne','RapsSonne','RapsSonne'))
-fin2$crop = mapvalues(fin2$crop, from= c('Leguminosen','Erbsen','Ackerbohnen','Klee','Luzerne','Süßlupinen'),to= c('Leguminosen','Leguminosen','Leguminosen','Leguminosen','Leguminosen','Leguminosen'))
-fin2$crop = mapvalues(fin2$crop, from= c('Wiesen','Weiden','Feldgras','Rauhfutter'),to= c('Gras','Gras','Gras','Gras'))
+fin = fin %>%
+  mutate(cropcat = plyr::mapvalues(crop, 
+            from= c('Getreidemit','Getreideohne','Brotgetreidearten','Wintergetreide','Futtergetreide','Sommergetreide','Triticale'), 
+            to= c('Getreide','Getreide','Getreide','Getreide','Getreide','Getreide','Getreide'))) %>%
+  mutate(cropcat = plyr::mapvalues(crop, 
+            from= c('Winterweizen','Sommerweizen','Getreideganz','Hartweizen','Weizen'), 
+            to= c('Weizen','Weizen','Weizen','Weizen','Weizen'))) %>%
+  mutate(cropcat = plyr::mapvalues(crop, 
+            from= c('Roggenmit','Roggen'), 
+            to=c('Roggen','Roggen'))) %>%
+  mutate(cropcat = plyr::mapvalues(crop, 
+            from= c('Gerste','Wintergerste','Sommergerste'), 
+            to= c('Gerste','Gerste','Gerste'))) %>%
+  mutate(cropcat = plyr::mapvalues(crop, 
+            from= c('Körnermaismit','Silomais'),
+            to= c('Mais','Mais'))) %>%
+  mutate(cropcat = plyr::mapvalues(crop, 
+            from= c('Frühkartoffeln','Kartoffeln','Spätkartoffeln'),
+            to= c('Kartoffeln','Kartoffeln','Kartoffeln'))) %>%
+  mutate(cropcat = plyr::mapvalues(crop, 
+            from= c('Zuckerrüben','Runkelrüben'),
+            to= c('Rüben','Rüben')))%>%
+  mutate(cropcat = plyr::mapvalues(crop, 
+            from= c('Winterraps','Sommerraps','Sonnenblumen'),
+            to= c('RapsSonne','RapsSonne','RapsSonne'))) %>%
+  mutate(cropcat = plyr::mapvalues(crop, 
+            from= c('Leguminosen','Erbsen','Ackerbohnen','Klee','Luzerne','Süßlupinen'),
+            to= c('Leguminosen','Leguminosen','Leguminosen','Leguminosen','Leguminosen','Leguminosen'))) %>%
+  mutate(cropcat = plyr::mapvalues(crop, 
+            from= c('Wiesen','Weiden','Feldgras','Rauhfutter'),
+            to= c('Gras','Gras','Gras','Gras')))
 
 # consolidate rows with allover same values, but different dtha
-fin2 = fin2 %>%
-  group_by(rs,shape_area,geom,year,gen,crop) %>%
-  summarise(dtha = sum(dtha,na.rm = TRUE))
+# fin = fin %>%
+#   group_by(rs,shape_area,geom,year,gen,crop) %>%
+#   summarise(dtha = sum(dtha,na.rm = TRUE))
 #vector of crop category names
-cropnms2 = unique(fin2$crop)
+cropnms2 = unique(fin$crop)
 ```
 
 ## Manipulate data and visualize
@@ -155,12 +175,13 @@ cropnms2 = unique(fin2$crop)
 # average yield per crop
 mn_crop = fin %>% 
   group_by(crop) %>%
-  summarise(mn_dt = mean(dtha))
+  summarise(mn_dt = mean(dtha)) %>%
+  mutate()
 
 ggplot(mn_crop, aes(x=crop,y=mn_dt)) + 
   geom_bar(stat = "identity") +
-  theme(axis.text.x = element_text(angle = 90, size = 9, vjust = 0))+
-  scale_x_discrete(labels=cropnms) +
+  theme(axis.text.x = element_text(angle = 90, size = 9, vjust = 0)) +
+  scale_x_discrete(labels=cropnms)
   
 # average yield per district
 mn_kreis = fin %>%
@@ -211,7 +232,7 @@ Therefore a distinction between the years from 2005 to 2006, from 2007 to 2009 a
 # average yield of each categorized crops per district
 l = list()
 for (i in 1:length(cropnms2)){
-mn_cropkreis2 = fin2 %>%
+mn_cropkreis2 = fin %>%
   group_by(crop,gen) %>%
   summarise(mn_dt = mean(dtha)) %>%
   filter(crop == cropnms2[i])
@@ -225,17 +246,17 @@ do.call(grid.arrange, c(l, top="Fig.2 Average yield of each crop category per di
 
 ```{r crop index}
 # TODO Auswahl der Kategorien und Berechnung eines Index
-cropindex06 = fin2 %>%
+cropindex06 = fin %>%
   filter(year==2005|2006) %>%
   group_by(gen) %>%
   summarise(mn_dt=mean(dtha))
   
-cropindex09 = fin2 %>%
+cropindex09 = fin %>%
   filter(year==2007|2008|2009) %>%
   group_by(gen) %>%
   summarise(mn_dt=mean(dtha))
 
-cropindex15 = fin2 %>%
+cropindex15 = fin %>%
   filter(year>=2010) %>%
   group_by(gen) %>%
   summarise(mn_dt=mean(dtha))
