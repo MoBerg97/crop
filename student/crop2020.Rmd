@@ -224,9 +224,9 @@ Therefore a distinction between the years from 2005 to 2006, from 2007 to 2009 a
 l = list()
 for (i in 1:length(cropcatnms)){
 mn_cropkreis2 = fin %>%
-  group_by(crop,gen) %>%
+  group_by(cropcat,gen) %>%
   summarise(mn_dt = mean(dtha)) %>%
-  filter(crop == cropcatnms[i])
+  filter(cropcat == cropcatnms[i])
   l[[i]] =  ggplot(data = mn_cropkreis2) +
   geom_sf(aes(fill = mn_dt)) + 
     scale_fill_gradient(limits = c(0, 1000)) +
