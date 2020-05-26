@@ -20,7 +20,7 @@ require(tidyr)
 require(tmap)
 require(grid)
 require(gridExtra)
-library(RColorBrewer)
+require(RColorBrewer)
 require(funchir) #delete after checking which packages are unused with stale_package_check('crop.Rmd')
 ```
 
@@ -200,7 +200,6 @@ ggplot(mn_jahr, aes(x=year,y=mn_dt)) +
 mn_cropjahr = fin %>%
   group_by(year, crop) %>%
   summarise(mn_dt = mean(dtha))
-
 cropnmsyear = unique(mn_cropjahr$crop)
 mn_cropjahr$year = as.factor(mn_cropjahr$year)
 
@@ -254,7 +253,9 @@ cropindex15 = fin %>%
   summarise(mn_dt=mean(dtha))
 
 # TODO Visualisierung
-tm_shape(nrw) + tm_fill()
+tm_shape(nrw) + tm_borders(lwd = 2, col='grey1') + tm_compass() + tm_shape(cropindex06) + tm_polygons('mn_dt', palette='RdYlBu', breaks = c(0,20,40,60,80,100,120),id='dt/ha')
+tm_shape(nrw) + tm_borders(lwd = 2, col='grey1') + tm_compass() + tm_shape(cropindex09) + tm_polygons('mn_dt', palette='RdYlBu', breaks = c(0,20,40,60,80,100,120),id='dt/ha')
+tm_shape(nrw) + tm_borders(lwd = 2, col='grey1') + tm_compass() + tm_shape(cropindex15) + tm_polygons('mn_dt', palette='RdYlBu', breaks = c(0,20,40,60,80,100,120), id='dt/ha')
 ```
 
 ## Merge with pesticide data
