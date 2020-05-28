@@ -131,6 +131,9 @@ fin = fin %>%
             from= c('Gerste','Wintergerste','Sommergerste'), 
             to= c('barley','barley','barley'))) %>%
   mutate(cropcat = plyr::mapvalues(cropcat, 
+            from= c('Hafer'), 
+            to= c('oat'))) %>%
+  mutate(cropcat = plyr::mapvalues(cropcat, 
             from= c('KörnermaismitCCM','Silomais'),
             to= c('maize','maize'))) %>%
   mutate(cropcat = plyr::mapvalues(cropcat, 
@@ -177,24 +180,28 @@ ggplot(mn_crop, aes(x=cropcat,y=mn_dt,  fill = cropcat)) +
   ggtitle('Fig.2 Average yield per crop category')
 ```
 
-The graphics show, that a cumulation of wheat, rye, oats to one group called cereals would be better comparable to other major crops. Other crop categories like rapeseed and sunflower can be disregarded due to low yield and unsuitable assignment to other categories.
+The graphics show, that a cumulation of wheat, rye, oats to one group called cereals would be better comparable to other major crops. Other crop categories like legumes, rapeseed and sunflower can be disregarded due to low yield and unsuitable assignment to other categories.
 
 ```{r categorize 2}
 fin = fin %>%
   mutate(cropcat2 = plyr::mapvalues(cropcat, 
-            from= c('Getreide',), 
-            to= c('cereals',))) %>%
+            from= c('cereal','wheat','rye','barley','oat'), 
+            to= c('cereals','cereals','cereals','cereals','cereals'))) %>%
+  mutate(cropcat2 = plyr::mapvalues(cropcat2, 
+            from= c('legumes','RapeseedSunflower','grassland'), 
+            to= c(NA,NA,NA))) %>%
+  na.omit()
 cropcatnms2 = unique(fin$cropcat2)
 ```
 
 ```{r overview year}
 # average yield per year
 mn_jahr = fin %>%
-  group_by(year) %>%
+  group_by(year,cropcat2) %>%
   summarise(mn_dt = mean(dtha))
 
-ggplot(mn_jahr, aes(x=year,y=mn_dt)) + 
-  geom_bar(stat = 'identity', width =0.8) +
+ggplot(mn_jahr, aes(x=year,y=mn_dt, fill=cropcat2)) + 
+  geom_bar(position='stack', stat = 'identity', width =0.8) +
   theme(axis.text.x = element_text(angle = 45, size = 9, vjust = 1, hjust = 1)) +
   ggtitle('Fig.3 Average yield per year')
 
