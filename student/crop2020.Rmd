@@ -175,16 +175,6 @@ ggplot(mn_crop, aes(x=cropcat,y=mn_dt,  fill = cropcat)) +
   labs(fill = 'crop category', y = 'dt/ha', x = '') +
   scale_fill_brewer(palette='RdYlBu') +
   ggtitle('Fig.2 Average yield per crop category')
-  
-# average yield per district
-mn_kreis = fin %>%
-  group_by(gen) %>%
-  summarise(mn_dt = mean(dtha))
-
-# average yield per crop per district
-mn_cropkreis = fin %>%
-  group_by(crop, gen) %>%
-  summarise(mn_dt = mean(dtha))
 ```
 
 The graphics show, that a cumulation of wheat, rye, oats to one group called cereals would be better comparable to other major crops. Other crop categories like rapeseed and sunflower can be disregarded due to low yield and unsuitable assignment to other categories.
