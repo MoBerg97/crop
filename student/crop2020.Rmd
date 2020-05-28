@@ -247,7 +247,6 @@ To have a glimpse over the geogrpahical distribution of yield districtwise we pl
 
 ```{r crops of district}
 # TODO table for abbreviation c
-unique(fin$gen)
 fin = fin %>%
   mutate(gn = plyr::mapvalues(gen, 
             from= unique(fin$gen), 
@@ -278,14 +277,15 @@ abbcode
 # do.call(grid.arrange, c(l, top='Fig.5 Average yield of each crop category mapped for each district'))
 #TODO maybe more elegant solution with tmap
 mn_cropkreis = fin %>%
-  group_by(cropcat2,gen) %>%
+  group_by(cropcat2, gen, gn) %>%
   summarise(mn_dt = mean(dtha))
+
+tm_layout(title='Fig.7 Average yield per district per crop category', title.bg.color=TRUE) +
 tm_shape(nrw) + 
   tm_borders(lwd = 2, col='grey1')+ 
   tm_compass() + tm_scale_bar() + 
 tm_shape(mn_cropkreis) + 
-  tm_sf('mn_dt', palette='RdYlBu', id='dt/ha', title='dt/ha') + 
-  tm_layout(title='Fig.7 Average yield per district per crop category', title.bg.color=TRUE) +
+  tm_sf('mn_dt', palette='RdYlBu') + 
   tm_facets(by='cropcat2')
 
 # facetting approach for yield per crop per district barplot
