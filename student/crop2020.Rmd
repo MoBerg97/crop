@@ -90,6 +90,7 @@ nrw = st_union(st_geometry(kreis3))
 ```
 
 To organize the data, the crops were renamed and categorized in another column into 11 factors.
+
 ```{r merge and categorize}
 # merge geo and crop data
 fin = merge(kreis3, dtc_long)
@@ -112,10 +113,10 @@ cropnms[33] = 'Weiden'
 cropnms[34] = 'Feldgras'
 cropnms[35] = 'KleeLuzerne'
 cropnms[37] = 'Silomais'
-
 # rename crops
 fin$crop = mapvalues(fin$crop, from = crop_names, to = cropnms)
 
+# categorize crops
 fin = fin %>%
   mutate(cropcat = plyr::mapvalues(crop, 
             from= c('GetreidemitCCM','GetreideohneCCM','Brotgetreidearten','Wintergetreide','Futtergetreide','Sommergetreide','Triticale'), 
@@ -158,12 +159,13 @@ cropcatnms = unique(fin$cropcat)
 mn_crop = fin %>% 
   group_by(crop,cropcat) %>%
   summarise(mn_dt = mean(dtha)) %>%
-  arrange(crop, cropcat)
-
+  arrange(cropcat)
+arrange(mn_crop, cropcat)
+# TODO arrange plot for crop categories
 ggplot(mn_crop, aes(x=crop,y=mn_dt,  fill = cropcat)) + 
   geom_bar(stat = 'identity', width = 0.8) +
   theme(axis.text.x = element_text(angle = 45, size = 9, vjust = 1, hjust = 1)) +
-  labs(fill = 'crop categoy', y = 'dt/ha', x = '') +
+  labs(fill = 'crop category', y = 'dt/ha', x = '') +
   scale_fill_brewer(palette='RdYlBu') +
   ggtitle('Fig.1 Average yield of crops')
 
@@ -219,20 +221,40 @@ ggplot() +
 The graph shows, that some previously largely harvested crops fell significantly in yield below the 100 dt per ha mark.
 Therefore a distinction between the years from 2005 to 2006, from 2007 to 2009 and from 2010 to 2015 could be useful.
 
+To have a glimpse over the geogrpahical distribution of yield districtwise we plotted a map-visual approach and a facet-barplot approach. We used the abbreviations of districts for license plates to shorten the district names for plots. The assignment code can be found below (dataframe 'abbcode').
+
 ```{r crops of district}
+# TODO table for abbreviation c
+unique(fin$gen)
+fin = fin %>%
+  mutate(gn = plyr::mapvalues(gen, 
+            from= unique(fin$gen), 
+            to=c('D','DU','E','KR','MG','MH','OB','RS','SG','W','KLE','ME','NE','VIE','WES','BN','K','LEV','AC','DN','BM','EU','HS','GM','GL','SU','BOT','GE','MS','BOR','COE','RE','ST','WAF','BI','GT','HF','HX','LIP','MI', 'PB', 'BO','DO','HA','HAM','HER','EN','HSK','LS','OE','SI','SO','UN')))
+abbcode = data.frame(gen = unique(fin$gen), gn = unique(fin$gn))
+abbcode
 # average yield of each categorized crops per district
 l = list()
 for (i in 1:length(cropcatnms)){
-mn_cropkreis2 = fin %>%
+mn_cropkreis = fin %>%
   group_by(cropcat,gen) %>%
   summarise(mn_dt = mean(dtha)) %>%
   filter(cropcat == cropcatnms[i])
-  l[[i]] =  ggplot(data = mn_cropkreis2) +
+  l[[i]] =  ggplot(data = mn_cropkreis) +
   geom_sf(aes(fill = mn_dt)) + 
     scale_fill_gradient(limits = c(0, 1000)) +
   ggtitle(cropcatnms[i])#, subtitle = 'yield in dt per ha')
     }
-do.call(grid.arrange, c(l, top='Fig.5 Average yield of each crop category per district'))
+do.call(grid.arrange, c(l, top='Fig.5 Average yield of each crop category mapped for each district'))
+# facetting approach
+mn_cropkreisf = fin %>%
+  group_by(cropcat,gen) %>%
+  summarise(mn_dt = mean(dtha))
+ggplot(mn_cropkreisf, aes(x=cropcat, y=mn_dt, fill = cropcat))+
+  geom_bar(stat='identity') +
+  facet_wrap(~gen, ncol = 10) +
+  labs(fill = 'crop category', y = 'dt/ha', x = '') +
+  scale_fill_brewer(palette='RdYlBu') +
+  ggtitle('Fig.6 Average yield per crop category for each district')
 ```
 
 ```{r crop index}
