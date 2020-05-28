@@ -275,7 +275,7 @@ abbcode
 #   }
 # }
 # do.call(grid.arrange, c(l, top='Fig.5 Average yield of each crop category mapped for each district'))
-#TODO maybe more elegant solution with tmap
+#TODO get tm_facets working
 mn_cropkreis = fin %>%
   group_by(cropcat2, gen, gn) %>%
   summarise(mn_dt = mean(dtha))
