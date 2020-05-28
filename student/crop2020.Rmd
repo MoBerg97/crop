@@ -206,45 +206,42 @@ ggplot(mn_jahr, aes(x=year,y=mn_dt, fill=cropcat2)) +
   ggtitle('Fig.3 Average yield per year')
 
 # average yield per crop per year
+# TODO have both colour codings in legend
 mn_cropjahr = fin %>%
   group_by(year, crop, cropcat, cropcat2) %>%
   summarise(mn_dt = mean(dtha))
-# cropnmsyear = unique(mn_cropjahr$crop)
-# mn_cropjahr$year = as.factor(mn_cropjahr$year)
-
-#TODO ERROR: `mapping`must be created by `aes()`
 bigcrop = filter(mn_cropjahr,mn_dt>100)
 smallcrop = filter(mn_cropjahr,mn_dt<100)
+
+cropjahrlegend = cbind(unique(bigcrop$crop),c('other'))
 ggplot() +
-  geom_point(bigcrop, aes(x=year, y=mn_dt, colour = crop)) +
-  geom_line(bigcrop, aes(x=year, y=mn_dt, colour = crop)) +
-  geom_point(smallcrop, aes(x=year, y=mn_dt,  colour = crop)) +
-  geom_line(smallcrop, aes(x=year, y=mn_dt, colour = crop)) +
-  geom_smooth(smallcrop, aes(), method = 'lm', se = TRUE) +
+  geom_point(aes(x=year, y=mn_dt, colour = crop), bigcrop) +
+  geom_line(aes(x=year, y=mn_dt,group = crop, colour = crop), bigcrop) +
+  geom_point(aes(x=year, y=mn_dt), smallcrop, colour='grey50') +
+  geom_line(aes(x=year, y=mn_dt,group = crop), smallcrop, colour='grey50') +
   ggtitle('Fig.4 Average yield of crops for each year from 2005 to 2015') +
-  theme(axis.text.x = element_text(angle = 90, size = 9, vjust = 0))
-# scale_colour_discrete(name  ='crop', l=60, breaks=cropnmsyear, labels=cropnmsyear) 
+  scale_colour_manual(name  ='crop', values=c('#CC0000','#CC6600','#FFFF00','#00CCCC','#0066CC','#0000CC'), labels=cropjahrlegend) +
+  theme(axis.text.x = element_text(angle = 45, size = 9, vjust = 0))
 
 #crop yield for the three yearspans mapped to districts
 cropyearspan1 = fin %>%
-  filter(year==2005|2006) %>%
+  filter(year<2010) %>%
   group_by(gen) %>%
   summarise(mn_dt=mean(dtha))
 cropyearspan2 = fin %>%
-  filter(year==2007|2008|2009) %>%
-  group_by(gen) %>%
-  summarise(mn_dt=mean(dtha))
-cropyearspan3 = fin %>%
   filter(year>=2010) %>%
   group_by(gen) %>%
   summarise(mn_dt=mean(dtha))
-tm_shape(nrw) + tm_borders(lwd = 2, col='grey1') + tm_compass() + tm_scale_bar() + tm_shape(cropyearspan1) + tm_polygons('mn_dt', palette='RdYlBu', breaks = c(0,20,40,60,80,100,120),id='dt/ha')
-tm_shape(nrw) + tm_borders(lwd = 2, col='grey1') + tm_compass() + tm_scale_bar() + tm_shape(cropyearspan2) + tm_polygons('mn_dt', palette='RdYlBu', breaks = c(0,20,40,60,80,100,120),id='dt/ha')
-tm_shape(nrw) + tm_borders(lwd = 2, col='grey1') + tm_compass() + tm_scale_bar() + tm_shape(cropyearspan3) + tm_polygons('mn_dt', palette='RdYlBu', breaks = c(0,20,40,60,80,100,120), id='dt/ha')
+tm_compass() + tm_scale_bar() + tm_shape(cropyearspan1) + tm_sf('mn_dt', palette='RdYlBu', breaks = c(0,30,60,90,120,150,180), id='dt/ha', title='dt/ha')  + tm_shape(nrw) + tm_borders(lwd = 2, col='grey1')+ tm_layout(title='Fig.5 Average yield per district from 2005 to 2009', title.bg.color=TRUE)
+tm_compass() + tm_scale_bar() + tm_shape(cropyearspan2) + tm_sf('mn_dt', palette='RdYlBu', breaks = c(0,30,60,90,120,150,180), id='dt/ha', title='dt/ha') + tm_layout(title='Fig.6 Average yield per district from 2010 to 2015', title.bg.color=TRUE) + tm_shape(nrw) + tm_borders(lwd = 2, col='grey1')
+
+#refine dataframe to exclude data before 2009
+cropindex = fin %>%
+  filter(year>=2010)
 ```
 
-The graph shows, that some previously largely harvested crops fell significantly in yield below the 100 dt per ha mark.
-Therefore a distinction between the years from 2005 to 2006, from 2007 to 2009 and from 2010 to 2015 could be useful.
+The graph in figure 4 shows, that some previously largely harvested crops fell significantly in yield below the 100 dt per ha mark in 2007 and 2009. This either indicates corrupted data, deviating data acquisition forms or actual drop of yield for those  specific crops. One possible reason could be the EU's energy crop directive of 2009 (EU2009 --> Official Journal of the European Union, https://eur-lex.europa.eu/LexUriServ/LexUriServ.do?uri=OJ:L:2009:140:0016:0062:EN:PDF)
+Therefore the dataframe was refined to only include data of years after 2009.
 
 To have a glimpse over the geogrpahical distribution of yield districtwise we plotted a map-visual approach and a facet-barplot approach. We used the abbreviations of districts for license plates to shorten the district names for plots. The assignment code can be found below (dataframe 'abbcode').
 
@@ -259,7 +256,7 @@ abbcode = data.frame(gen = unique(fin$gen), gn = unique(fin$gn))
 abbcode
 
 # average yield of each categorized crops per district
-#TODO maybe more elegant solution with tmap
+
 # l = list()
 # myPalette <- colorRampPalette(rev(brewer.pal(11, "Spectral")))
 # for (i in 1:length(cropcatnms)){
@@ -279,6 +276,17 @@ abbcode
 #   }
 # }
 # do.call(grid.arrange, c(l, top='Fig.5 Average yield of each crop category mapped for each district'))
+#TODO maybe more elegant solution with tmap
+mn_cropkreis = fin %>%
+  group_by(cropcat2,gen) %>%
+  summarise(mn_dt = mean(dtha))
+tm_shape(nrw) + 
+  tm_borders(lwd = 2, col='grey1')+ 
+  tm_compass() + tm_scale_bar() + 
+tm_shape(mn_cropkreis) + 
+  tm_sf('mn_dt', palette='RdYlBu', id='dt/ha', title='dt/ha') + 
+  tm_layout(title='Fig.7 Average yield per district per crop category', title.bg.color=TRUE) +
+  tm_facets(by='cropcat2')
 
 # facetting approach for yield per crop per district barplot
 mn_cropkreisf = fin %>%
