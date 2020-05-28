@@ -233,28 +233,38 @@ fin = fin %>%
 abbcode = data.frame(gen = unique(fin$gen), gn = unique(fin$gn))
 abbcode
 # average yield of each categorized crops per district
+#TODO maybe more elegant solution with tmap
 l = list()
+fincropkreis = fin %>%
+  select(cropcat, gen, gn, dtha)
 for (i in 1:length(cropcatnms)){
-mn_cropkreis = fin %>%
+mn_cropkreis = fincropkreis %>%
   group_by(cropcat,gen) %>%
   summarise(mn_dt = mean(dtha)) %>%
   filter(cropcat == cropcatnms[i])
   l[[i]] =  ggplot(data = mn_cropkreis) +
   geom_sf(aes(fill = mn_dt)) + 
-    scale_fill_gradient(limits = c(0, 1000)) +
+    scale_fill_gradient2(midpoint = 32, low='blue', mid='yellow', high = 'red') +
   ggtitle(cropcatnms[i])#, subtitle = 'yield in dt per ha')
-    }
+  if(i==length(cropcatnms)){ 
+    l[[i]] = l[[i]] + theme(axis.text = element_blank(), axis.ticks = element_blank()) + guide_legend() 
+  }
+  else {
+    l[[i]] = l[[i]] + theme(axis.text = element_blank(), axis.ticks = element_blank(), legend.position = 'none')
+  }
+}
 do.call(grid.arrange, c(l, top='Fig.5 Average yield of each crop category mapped for each district'))
 # facetting approach
 mn_cropkreisf = fin %>%
-  group_by(cropcat,gen) %>%
+  group_by(cropcat,gn) %>%
   summarise(mn_dt = mean(dtha))
 ggplot(mn_cropkreisf, aes(x=cropcat, y=mn_dt, fill = cropcat))+
   geom_bar(stat='identity') +
-  facet_wrap(~gen, ncol = 10) +
+  facet_wrap(~gn, ncol = 10) +
   labs(fill = 'crop category', y = 'dt/ha', x = '') +
   scale_fill_brewer(palette='RdYlBu') +
-  ggtitle('Fig.6 Average yield per crop category for each district')
+  ggtitle('Fig.6 Average yield per crop category for each district') + 
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.text.y = element_text(size = 6))
 ```
 
 ```{r crop index}
