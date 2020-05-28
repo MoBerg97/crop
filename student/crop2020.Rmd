@@ -207,22 +207,40 @@ ggplot(mn_jahr, aes(x=year,y=mn_dt, fill=cropcat2)) +
 
 # average yield per crop per year
 mn_cropjahr = fin %>%
-  group_by(year, crop) %>%
+  group_by(year, crop, cropcat, cropcat2) %>%
   summarise(mn_dt = mean(dtha))
-cropnmsyear = unique(mn_cropjahr$crop)
-mn_cropjahr$year = as.factor(mn_cropjahr$year)
+# cropnmsyear = unique(mn_cropjahr$crop)
+# mn_cropjahr$year = as.factor(mn_cropjahr$year)
 
-#TODO crops over 100dt/ha in legend. Other crops withoout legend (or colours)
+#TODO ERROR: `mapping`must be created by `aes()`
+bigcrop = filter(mn_cropjahr,mn_dt>100)
+smallcrop = filter(mn_cropjahr,mn_dt<100)
 ggplot() +
+  geom_point(bigcrop, aes(x=year, y=mn_dt, colour = crop)) +
+  geom_line(bigcrop, aes(x=year, y=mn_dt, colour = crop)) +
+  geom_point(smallcrop, aes(x=year, y=mn_dt,  colour = crop)) +
+  geom_line(smallcrop, aes(x=year, y=mn_dt, colour = crop)) +
+  geom_smooth(smallcrop, aes(), method = 'lm', se = TRUE) +
   ggtitle('Fig.4 Average yield of crops for each year from 2005 to 2015') +
-  geom_point(data=filter(mn_cropjahr,mn_dt>100),aes(x=year,y=mn_dt, group = crop, colour = crop)) +
-  geom_line(data=filter(mn_cropjahr,mn_dt>100),aes(x=year,y=mn_dt, group = crop, colour = crop)) +
-  theme(axis.text.x = element_text(angle = 90, size = 9, vjust = 0)) +
-  scale_colour_discrete(name  ='crop', l=60, breaks=cropnmsyear, labels=cropnmsyear) 
-  geom_point(data=filter(mn_cropjahr,mn_dt<100), aes(x=year,y=mn_dt, group=crop)) +
-  geom_line(data=filter(mn_cropjahr,mn_dt<100), aes(x=year,y=mn_dt, group=crop)) +
-  geom_smooth(filter(mn_cropjahr,mn_dt<100), aes(group = crop), method = 'lm', se = TRUE) +
   theme(axis.text.x = element_text(angle = 90, size = 9, vjust = 0))
+# scale_colour_discrete(name  ='crop', l=60, breaks=cropnmsyear, labels=cropnmsyear) 
+
+#crop yield for the three yearspans mapped to districts
+cropyearspan1 = fin %>%
+  filter(year==2005|2006) %>%
+  group_by(gen) %>%
+  summarise(mn_dt=mean(dtha))
+cropyearspan2 = fin %>%
+  filter(year==2007|2008|2009) %>%
+  group_by(gen) %>%
+  summarise(mn_dt=mean(dtha))
+cropyearspan3 = fin %>%
+  filter(year>=2010) %>%
+  group_by(gen) %>%
+  summarise(mn_dt=mean(dtha))
+tm_shape(nrw) + tm_borders(lwd = 2, col='grey1') + tm_compass() + tm_scale_bar() + tm_shape(cropyearspan1) + tm_polygons('mn_dt', palette='RdYlBu', breaks = c(0,20,40,60,80,100,120),id='dt/ha')
+tm_shape(nrw) + tm_borders(lwd = 2, col='grey1') + tm_compass() + tm_scale_bar() + tm_shape(cropyearspan2) + tm_polygons('mn_dt', palette='RdYlBu', breaks = c(0,20,40,60,80,100,120),id='dt/ha')
+tm_shape(nrw) + tm_borders(lwd = 2, col='grey1') + tm_compass() + tm_scale_bar() + tm_shape(cropyearspan3) + tm_polygons('mn_dt', palette='RdYlBu', breaks = c(0,20,40,60,80,100,120), id='dt/ha')
 ```
 
 The graph shows, that some previously largely harvested crops fell significantly in yield below the 100 dt per ha mark.
@@ -239,6 +257,7 @@ fin = fin %>%
             to=c('D','DU','E','KR','MG','MH','OB','RS','SG','W','KLE','ME','NE','VIE','WES','BN','K','LEV','AC','DN','BM','EU','HS','GM','GL','SU','BOT','GE','MS','BOR','COE','RE','ST','WAF','BI','GT','HF','HX','LIP','MI', 'PB', 'BO','DO','HA','HAM','HER','EN','HSK','LS','OE','SI','SO','UN')))
 abbcode = data.frame(gen = unique(fin$gen), gn = unique(fin$gn))
 abbcode
+
 # average yield of each categorized crops per district
 #TODO maybe more elegant solution with tmap
 # l = list()
@@ -260,7 +279,8 @@ abbcode
 #   }
 # }
 # do.call(grid.arrange, c(l, top='Fig.5 Average yield of each crop category mapped for each district'))
-# facetting approach
+
+# facetting approach for yield per crop per district barplot
 mn_cropkreisf = fin %>%
   group_by(cropcat,gn) %>%
   summarise(mn_dt = mean(dtha))
@@ -277,25 +297,7 @@ ggplot(mn_cropkreisf, aes(x=cropcat, y=mn_dt, fill = cropcat))+
 
 ```{r crop index}
 # TODO Auswahl der Kategorien und Berechnung eines Index
-cropindex06 = fin %>%
-  filter(year==2005|2006) %>%
-  group_by(gen) %>%
-  summarise(mn_dt=mean(dtha))
-  
-cropindex09 = fin %>%
-  filter(year==2007|2008|2009) %>%
-  group_by(gen) %>%
-  summarise(mn_dt=mean(dtha))
 
-cropindex15 = fin %>%
-  filter(year>=2010) %>%
-  group_by(gen) %>%
-  summarise(mn_dt=mean(dtha))
-
-# TODO Visualisierung
-tm_shape(nrw) + tm_borders(lwd = 2, col='grey1') + tm_compass() + tm_shape(cropindex06) + tm_polygons('mn_dt', palette='RdYlBu', breaks = c(0,20,40,60,80,100,120),id='dt/ha')
-tm_shape(nrw) + tm_borders(lwd = 2, col='grey1') + tm_compass() + tm_shape(cropindex09) + tm_polygons('mn_dt', palette='RdYlBu', breaks = c(0,20,40,60,80,100,120),id='dt/ha')
-tm_shape(nrw) + tm_borders(lwd = 2, col='grey1') + tm_compass() + tm_shape(cropindex15) + tm_polygons('mn_dt', palette='RdYlBu', breaks = c(0,20,40,60,80,100,120), id='dt/ha')
 ```
 
 ## Merge with pesticide data
