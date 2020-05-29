@@ -189,9 +189,11 @@ fin = fin %>%
             to= c('cereals','cereals','cereals','cereals','cereals'))) %>%
   mutate(cropcat2 = plyr::mapvalues(cropcat2, 
             from= c('legumes','RapeseedSunflower','grassland'), 
-            to= c(NA,NA,NA))) %>%
+            to= c(NA,NA,NA)))
+# refine data for final cropindex cropwise
+cropindex = fin %>%
   na.omit()
-cropcatnms2 = unique(fin$cropcat2)
+cropcatnms2 = na.omit(unique(fin$cropcat2))
 ```
 
 ```{r overview year}
@@ -232,11 +234,11 @@ cropyearspan2 = fin %>%
   filter(year>=2010) %>%
   group_by(gen) %>%
   summarise(mn_dt=mean(dtha))
-tm_compass() + tm_scale_bar() + tm_shape(cropyearspan1) + tm_sf('mn_dt', palette='RdYlBu', breaks = c(0,30,60,90,120,150,180), id='dt/ha', title='dt/ha')  + tm_shape(nrw) + tm_borders(lwd = 2, col='grey1')+ tm_layout(title='Fig.5 Average yield per district from 2005 to 2009', title.bg.color=TRUE)
-tm_compass() + tm_scale_bar() + tm_shape(cropyearspan2) + tm_sf('mn_dt', palette='RdYlBu', breaks = c(0,30,60,90,120,150,180), id='dt/ha', title='dt/ha') + tm_layout(title='Fig.6 Average yield per district from 2010 to 2015', title.bg.color=TRUE) + tm_shape(nrw) + tm_borders(lwd = 2, col='grey1')
+tm_compass() + tm_scale_bar() + tm_shape(cropyearspan1) + tm_sf('mn_dt', palette='RdYlBu', breaks = c(0,30,60,90,120,150,180), id='dt/ha', title='dt/ha')  + tm_shape(nrw) + tm_borders(lwd = 2, col='grey30')+ tm_layout(title='Fig.5 Average yield per district from 2005 to 2009', title.bg.color=TRUE)
+tm_compass() + tm_scale_bar() + tm_shape(cropyearspan2) + tm_sf('mn_dt', palette='RdYlBu', breaks = c(0,30,60,90,120,150,180), id='dt/ha', title='dt/ha')  + tm_shape(nrw) + tm_borders(lwd = 2, col='grey30')+ tm_layout(title='Fig.6 Average yield per district from 2010 to 2015', title.bg.color=TRUE)
 
 #refine dataframe to exclude data before 2009
-cropindex = fin %>%
+cropindex = cropindex %>%
   filter(year>=2010)
 ```
 
@@ -246,7 +248,7 @@ Therefore the dataframe was refined to only include data of years after 2009.
 To have a glimpse over the geogrpahical distribution of yield districtwise we plotted a map-visual approach and a facet-barplot approach. We used the abbreviations of districts for license plates to shorten the district names for plots. The assignment code can be found below (dataframe 'abbcode').
 
 ```{r crops of district}
-# TODO table for abbreviation c
+#abbreviation of districts
 fin = fin %>%
   mutate(gn = plyr::mapvalues(gen, 
             from= unique(fin$gen), 
@@ -255,7 +257,6 @@ abbcode = data.frame(gen = unique(fin$gen), gn = unique(fin$gn))
 abbcode
 
 # average yield of each categorized crops per district
-
 # l = list()
 # myPalette <- colorRampPalette(rev(brewer.pal(11, "Spectral")))
 # for (i in 1:length(cropcatnms)){
@@ -275,32 +276,42 @@ abbcode
 #   }
 # }
 # do.call(grid.arrange, c(l, top='Fig.5 Average yield of each crop category mapped for each district'))
+
 #TODO get tm_facets working
 mn_cropkreis = fin %>%
+  na.omit() %>%
   group_by(cropcat2, gen, gn) %>%
-  summarise(mn_dt = mean(dtha))
+  summarise(mn_dt = mean(dtha)) 
 
 tm_layout(title='Fig.7 Average yield per district per crop category', title.bg.color=TRUE) +
-tm_shape(nrw) + 
-  tm_borders(lwd = 2, col='grey1')+ 
+  tm_shape(nrw) + 
+  tm_borders(lwd = 2, col='grey30')+ 
   tm_compass() + tm_scale_bar() + 
 tm_shape(mn_cropkreis) + 
   tm_sf('mn_dt', palette='RdYlBu') + 
   tm_facets(by='cropcat2')
 
 # facetting approach for yield per crop per district barplot
+#TODO show with visual effect (red border, ..) which districts get sorted out
 mn_cropkreisf = fin %>%
-  group_by(cropcat,gn) %>%
+  na.omit() %>%
+  group_by(cropcat2,gn) %>%
   summarise(mn_dt = mean(dtha))
-ggplot(mn_cropkreisf, aes(x=cropcat, y=mn_dt, fill = cropcat))+
+ggplot(mn_cropkreisf, aes(x=cropcat2, y=mn_dt, fill = cropcat2))+
   geom_bar(stat='identity') +
   facet_wrap(~gn, ncol = 10) +
   labs(fill = 'crop category', y = 'dt/ha', x = '') +
   scale_fill_brewer(palette='RdYlBu') +
-  ggtitle('Fig.6 Average yield per crop category for each district') + 
-  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.text.y = element_text(size = 6))
+  ggtitle('Fig.8 Average yield per crop category for each district') + 
+  theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.text.y = element_text(size = 7))
 
-#TODO Stadtkreise und Kreise mit geringer Landwirtschaft aussortieren
+#add abbreviation and sort out districts of low agriculture
+cropindex = cropindex %>%
+  mutate(gn = plyr::mapvalues(gen, 
+            from= unique(fin$gen), 
+            to=c('D','DU','E','KR','MG','MH','OB','RS','SG','W','KLE','ME','NE','VIE','WES','BN','K','LEV','AC','DN','BM','EU','HS','GM','GL','SU','BOT','GE','MS','BOR','COE','RE','ST','WAF','BI','GT','HF','HX','LIP','MI', 'PB', 'BO','DO','HA','HAM','HER','EN','HSK','LS','OE','SI','SO','UN'))) %>%
+  group_by(gn) %>%
+  filter(summarise(sum_dtha = sum(mn_dt))>500)
 ```
 
 ```{r crop index}
@@ -317,12 +328,12 @@ nrw2 = readRDS(file.path('data/nrw', 'nrw_sites.rds')) # spatial sites data
 nrw_sam = readRDS(file.path('data/nrw', 'nrw_samples.rds')) # pesticide samples
 nrw_sam$site_id = gsub('_....-..-..','',nrw_sam$sample_id)
 pest = merge(nrw2, nrw_sam)
-#Intersection 
+#Transformation fitting to german EPSG: and Intersection 
 st_crs(pest)
-st_crs(mn_kreis)
-mn_kreis = st_transform(mn_kreis, crs = st_crs(pest)) 
+st_crs(cropindex)
+mn_kreis = st_transform(cropindex, crs = st_crs(pest)) 
 # geometrische Koordsysteme besser für 2dimensionale GIS Arbeiten heißt 31467 praktischer
-pestcrop = st_intersection(mn_kreis, pest) #insert crop index dataframe here
+pestcrop = st_intersection(cropindex, pest) #insert crop index dataframe here
 
 #TODO barplot Pestizide mit höchsten Konzentrationen
 
