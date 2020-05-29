@@ -300,7 +300,7 @@ ggplot(mn_cropkreisf, aes(x=cropcat2, y=mn_dt, fill = cropcat2))+
 ```
 
 ```{r crop index}
-# TODO better visuals: colour of bubbles as gradient, alpha fix, legend only for colour or size, legend title as index, divide values by 1000
+# TODO better visuals: colour of bubbles as gradient, alpha for whole bubbles available?, legend only for colour or size, legend title as index, divide values by 1000
 #TODO maybe replace sum_dtha<10000 with NA so that polygons of the district are saved for intersection with pest-data
 cropindex = fin %>%
   na.omit() %>%                     #sort out rows which don't fit to the 2nd crop classification
@@ -311,7 +311,7 @@ cropindex = fin %>%
   group_by(gn) %>%
   mutate(sum_dtha = sum(mn_dt)) %>% #summarise the average yield of crop categories per district
   filter(sum_dtha<10000)            #sort out districts below 10000 dt/ha
-tm_compass() + tm_scale_bar() + tm_shape(fin) + tm_polygons() + tm_shape(cropindex) + tm_bubbles(size='sum_dtha',  col='sum_dtha', alpha=0.5, scale=3)  + tm_shape(nrw) + tm_borders(lwd = 2, col='grey30')+ tm_layout(title='Fig.9 Crop index', title.bg.color=TRUE)
+tm_compass() + tm_scale_bar() + tm_shape(fin) + tm_polygons() + tm_shape(cropindex) + tm_bubbles(size='sum_dtha',  col='sum_dtha', style='pretty', scale=3)  + tm_shape(nrw) + tm_borders(lwd = 2, col='grey30')+ tm_layout(title='Fig.9 Crop index', title.bg.color=TRUE)
 ```
 
 ## Merge with pesticide data
@@ -333,6 +333,7 @@ ggplot(pest, aes(x=))
 #TODO calculate pest index - Messstation mit höchstem Landwirtschaftsanteil
 pestindex = pest %>%
   mutate(atkis_perc = atkis_perc*100) %>%     #agricultural proportion converted into percentage
+  group_by(site_id, gn) %>%
   
 #TODO visualize
 
