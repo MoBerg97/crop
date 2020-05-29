@@ -189,10 +189,7 @@ fin = fin %>%
             to= c('cereals','cereals','cereals','cereals','cereals'))) %>%
   mutate(cropcat2 = plyr::mapvalues(cropcat2, 
             from= c('legumes','RapeseedSunflower','grassland'), 
-            to= c(NA,NA,NA)))
-# refine data for final cropindex cropwise
-cropindex = fin %>%
-  na.omit()
+            to= c(NA,NA,NA))) 
 cropcatnms2 = na.omit(unique(fin$cropcat2))
 ```
 
@@ -236,14 +233,10 @@ cropyearspan2 = fin %>%
   summarise(mn_dt=mean(dtha))
 tm_compass() + tm_scale_bar() + tm_shape(cropyearspan1) + tm_sf('mn_dt', palette='RdYlBu', breaks = c(0,30,60,90,120,150,180), id='dt/ha', title='dt/ha')  + tm_shape(nrw) + tm_borders(lwd = 2, col='grey30')+ tm_layout(title='Fig.5 Average yield per district from 2005 to 2009', title.bg.color=TRUE)
 tm_compass() + tm_scale_bar() + tm_shape(cropyearspan2) + tm_sf('mn_dt', palette='RdYlBu', breaks = c(0,30,60,90,120,150,180), id='dt/ha', title='dt/ha')  + tm_shape(nrw) + tm_borders(lwd = 2, col='grey30')+ tm_layout(title='Fig.6 Average yield per district from 2010 to 2015', title.bg.color=TRUE)
-
-#refine dataframe to exclude data before 2009
-cropindex = cropindex %>%
-  filter(year>=2010)
 ```
 
 The graph in figure 4 shows, that some previously largely harvested crops fell significantly in yield below the 100 dt per ha mark in 2007 and 2009. This either indicates corrupted data, deviating data acquisition forms or actual drop of yield for those  specific crops. One possible reason could be the EU's energy crop directive of 2009 (EU2009 --> Official Journal of the European Union, https://eur-lex.europa.eu/LexUriServ/LexUriServ.do?uri=OJ:L:2009:140:0016:0062:EN:PDF)
-Therefore the dataframe was refined to only include data of years after 2009.
+Therefore the final dataframe was refined to only include data of years after 2009.
 
 To have a glimpse over the geogrpahical distribution of yield districtwise we plotted a map-visual approach and a facet-barplot approach. We used the abbreviations of districts for license plates to shorten the district names for plots. The assignment code can be found below (dataframe 'abbcode').
 
@@ -304,19 +297,20 @@ ggplot(mn_cropkreisf, aes(x=cropcat2, y=mn_dt, fill = cropcat2))+
   scale_fill_brewer(palette='RdYlBu') +
   ggtitle('Fig.8 Average yield per crop category for each district') + 
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.text.y = element_text(size = 7))
-
-#add abbreviation and sort out districts of low agriculture
-cropindex = cropindex %>%
-  mutate(gn = plyr::mapvalues(gen, 
-            from= unique(fin$gen), 
-            to=c('D','DU','E','KR','MG','MH','OB','RS','SG','W','KLE','ME','NE','VIE','WES','BN','K','LEV','AC','DN','BM','EU','HS','GM','GL','SU','BOT','GE','MS','BOR','COE','RE','ST','WAF','BI','GT','HF','HX','LIP','MI', 'PB', 'BO','DO','HA','HAM','HER','EN','HSK','LS','OE','SI','SO','UN'))) %>%
-  group_by(gn) %>%
-  filter(summarise(sum_dtha = sum(mn_dt))>500)
 ```
 
 ```{r crop index}
-# TODO Auswahl der Kategorien und Berechnung eines Index
-
+# TODO better visuals: colour of bubbles as gradient, alpha fix, legend only for colour or size, legend title as index, divide values by 1000
+cropindex = fin %>%
+  na.omit() %>%                     #sort out rows which don't fit to the 2nd crop classification
+  filter(year>=2010) %>%            #sort out years before 2010
+  group_by(cropcat2,gn) %>%         
+  mutate(mn_dt = mean(dtha)) %>%    #average yield per crop category and disrtict
+  ungroup(cropcat2) %>%
+  group_by(gn) %>%
+  mutate(sum_dtha = sum(mn_dt)) %>% #summarise the average yield of crop categories per district
+  filter(sum_dtha>10000)            #remove 
+tm_compass() + tm_scale_bar() + tm_shape(fin) + tm_polygons() + tm_shape(cropindex) + tm_bubbles(size='sum_dtha',  col='sum_dtha', alpha=0.5, scale=3)  + tm_shape(nrw) + tm_borders(lwd = 2, col='grey30')+ tm_layout(title='Fig.9 Crop index', title.bg.color=TRUE)
 ```
 
 ## Merge with pesticide data
@@ -328,15 +322,14 @@ nrw2 = readRDS(file.path('data/nrw', 'nrw_sites.rds')) # spatial sites data
 nrw_sam = readRDS(file.path('data/nrw', 'nrw_samples.rds')) # pesticide samples
 nrw_sam$site_id = gsub('_....-..-..','',nrw_sam$sample_id)
 pest = merge(nrw2, nrw_sam)
-#Transformation fitting to german EPSG: and Intersection 
+#Transformation fitting to the german EPSG: 31467 and Intersection 
 st_crs(pest)
 st_crs(cropindex)
-mn_kreis = st_transform(cropindex, crs = st_crs(pest)) 
-# geometrische Koordsysteme besser für 2dimensionale GIS Arbeiten heißt 31467 praktischer
-pestcrop = st_intersection(cropindex, pest) #insert crop index dataframe here
+mn_kreis = st_transform(cropindex, crs = st_crs(pest))
+pestcrop = st_intersection(cropindex, pest)
 
 #TODO barplot Pestizide mit höchsten Konzentrationen
-
+ggplot(pest, aes(x=))
 #TODO calculate pest index - Messstation mit höchstem Landwirtschaftsanteil
  
 #TODO visualize
