@@ -6,7 +6,7 @@ editor_options:
 ---
 
 ## Packages
-test
+
 ```{r packages}
 require(data.table)
 require(sf)
@@ -25,14 +25,6 @@ require(funchir) #delete after checking which packages are unused with stale_pac
 ```
 
 ## Harvest data
-(1) A list named fl_vec of every name of the datatables in the data/nrw directory was created 
-(2) A new list named l was created
-(3-5) Every table from the data named as the strings in the list fl_vec was implemented in a dataframe named dat
-(6) The first row  was dropped, but why?
-(7) The names for the first two columns representing the district number and the district name were set to 'rs' and 'gen'
-(8) The list l was filled with the rows, each containing a dataframe from dat for every year
-(9) the names of the rows in l are reduced from the data name to only the yearnumber
-(10) rbindlist stacked all the data.frames of the list l to a single data.frame and labeled the id column to year
 
 ```{r data-harvest}
 # read list of files
@@ -49,28 +41,20 @@ for (i in seq_along(fl_vec)) {
 }
 # bind list of data.table to one data.table
 dt = rbindlist(l, fill = TRUE, idcol = 'year')
-
 # remove special symbols and convert column types to numeric
-dtc = data.frame(dt)
-for(i in 4:41){
-  dtc[,i] =  gsub('[-.x]','0',dtc[,i])
-  dtc[,i] = gsub('[,]','.',dtc[,i])
-}
-for(i in 4:41){
-  dtc[,i] = as.numeric(dtc[,i])
-}
+cols = names(dt)[ ! names(dt) %in% c('year', 'rs', 'gen')]
+dt[ , (cols) := lapply(.SD, function(x) gsub('\\.|-', NA, x)),
+    .SDcols = cols ]
+dt[ , (cols) := lapply(.SD, function(x) gsub(',', '.', x)),
+    .SDcol = cols ]
+dt = dt %>%
+  mutate_at(c(4:41), ~as.numeric(.)) %>%
+  mutate_at(c(4:41), ~replace(.,is.na(.),0))
 # bring data into long format (year, rs, gen as identifier variables)
-crop_names = colnames(dtc[,4:41])
-setDT(dtc)
-str(dtc)
-dtc_long = melt(dtc, id.vars = c('year','rs','gen'), measure.vars = crop_names, variable.name = 'crop', value.name = 'dtha' )
+crop_names = colnames(dt[,4:41])
+setDT(dt)
+dt_long = melt(dt, id.vars = c('year','rs','gen'), measure.vars = crop_names, variable.name = 'crop', value.name = 'dtha' )
 ```
-
-(1) Shapefiles der Kreise Deutschlands werden eingelesen.
-(2) Namen der Spalten werden alle nun klein geschrieben
-(3) rs der Kreise soll als numeric typisiert sein --> merge mit rs aus dtc
-(4) kreis2 ist Tabelle aus Kopie der Spalten rs, rs_alt, ... von kreis
-(5) zeigt die Karte an
 
 ```{r data-spatial-regions}
 kreis = st_read(file.path('data', 'germany_kreis.shp'), stringsAsFactors = FALSE)
@@ -78,29 +62,23 @@ setnames(kreis, tolower(names(kreis)))
 kreis$rs = as.numeric(kreis$rs)
 kreis2 = kreis[ , names(kreis) %in% c('rs', 'rs_alt', 'geom', 'shape_leng', 'shape_area') ]
 # refine to NRW only
-kreis3 = kreis2[0,]
-for (i in 1:402){
-  if (kreis2$rs[i]>5000 & kreis2$rs[i]<6000){
-    rbind(kreis3)
-  kreis3[nrow(kreis3)+1,] = kreis2[i,]
-  }
-}
+nrw <- kreis2 %>% 
+  filter(substr(rs_alt,1,2) == "05")
 #nrw as a whole geometry for visualization purposes
-mapview(kreis3)
-nrw = st_union(st_geometry(kreis3))
+nrw_full = st_union(st_geometry(nrw))
 ```
+According to the german district number, formally called 'Amtlicher Gemeindeschlüssel' and referenced by rs_alt, the first to digits '05' indicate the federal state 'North Rhine-Westphalia'.
 
-To organize the data, the crops were renamed and categorized in another column into 11 factors.
-
+To organize the data, the crops were renamed and categorized in another column into 12 factors.
 ```{r merge and categorize}
 # merge geo and crop data
-fin = merge(kreis3, dtc_long)
+fin = merge(nrw, dt_long)
 # shorten crop names
 cropnms = gsub('[.]', ' ', crop_names)
 cropnms[1] = 'GetreidemitCCM'
 cropnms[2] = 'GetreideohneCCM'
 cropnms[7] = 'Hartweizen'
-cropnms[8] = 'Roggenmit'
+cropnms[8] = 'RoggenmitWG'
 cropnms[11] = 'Futtergetreide'
 cropnms[10] = 'Wintergetreide'
 cropnms[16] = 'Sommergetreide'
@@ -118,39 +96,18 @@ cropnms[37] = 'Silomais'
 fin$crop = mapvalues(fin$crop, from = crop_names, to = cropnms)
 # categorize crops
 fin = fin %>%
-  mutate(cropcat = plyr::mapvalues(crop, 
-            from= c('GetreidemitCCM','GetreideohneCCM','Brotgetreidearten','Wintergetreide','Futtergetreide','Sommergetreide','Triticale'), 
-            to= c('cereal','cereal','cereal','cereal','cereal','cereal','cereal'))) %>%
-  mutate(cropcat = plyr::mapvalues(cropcat, 
-            from= c('Winterweizen','Sommerweizen','Getreideganz','Hartweizen','Weizen'), 
-            to= c('wheat','wheat','wheat','wheat','wheat'))) %>%
-  mutate(cropcat = plyr::mapvalues(cropcat, 
-            from= c('Roggenmit','Roggen'), 
-            to=c('rye','rye'))) %>%
-  mutate(cropcat = plyr::mapvalues(cropcat, 
-            from= c('Gerste','Wintergerste','Sommergerste'), 
-            to= c('barley','barley','barley'))) %>%
-  mutate(cropcat = plyr::mapvalues(cropcat, 
-            from= c('Hafer'), 
-            to= c('oat'))) %>%
-  mutate(cropcat = plyr::mapvalues(cropcat, 
-            from= c('KörnermaismitCCM','Silomais'),
-            to= c('maize','maize'))) %>%
-  mutate(cropcat = plyr::mapvalues(cropcat, 
-            from= c('Frühkartoffeln','Kartoffeln','Spätkartoffeln'),
-            to= c('potatoes','potatoes','potatoes'))) %>%
-  mutate(cropcat = plyr::mapvalues(cropcat, 
-            from= c('Zuckerrüben','Runkelrüben'),
-            to= c('beets','beets')))%>%
-  mutate(cropcat = plyr::mapvalues(cropcat, 
-            from= c('Winterraps','Sommerraps','Sonnenblumen'),
-            to= c('RapeseedSunflower','RapeseedSunflower','RapeseedSunflower'))) %>%
-  mutate(cropcat = plyr::mapvalues(cropcat, 
-            from= c('Leguminosen','Erbsen','Ackerbohnen','KleeLuzerne','Luzerne','Süßlupinen'),
-            to= c('legumes','legumes','legumes','legumes','legumes','legumes'))) %>%
-  mutate(cropcat = plyr::mapvalues(cropcat, 
-            from= c('Wiesen','Weiden','Feldgras','Rauhfutter'),
-            to= c('grassland','grassland','grassland','grassland')))
+  mutate(cropcat = case_when(crop %in% c('GetreidemitCCM','GetreideohneCCM','Brotgetreidearten','Wintergetreide','Futtergetreide','Sommergetreide','Triticale') ~ 'cereal',
+        crop %in% c('Winterweizen','Sommerweizen','Getreideganz','Hartweizen','Weizen') ~ 'wheat',
+        crop %in% c('RoggenmitWG','Roggen') ~ 'rye',
+        crop %in% c('Gerste','Wintergerste','Sommergerste') ~ 'barley',
+        crop %in% c('Hafer') ~ 'oat',
+        crop %in% c('KörnermaismitCCM','Silomais') ~ 'maize',
+        crop %in% c('Frühkartoffeln','Kartoffeln','Spätkartoffeln') ~ 'potatoes',
+        crop %in% c('Zuckerrüben','Runkelrüben') ~ 'beets',
+        crop %in% c('Winterraps','Sommerraps') ~ 'rapeseed',
+        crop %in% c('Sonnenblumen') ~ 'sunflower',
+        crop %in% c('Leguminosen','Erbsen','Ackerbohnen','KleeLuzerne','Luzerne','Süßlupinen') ~ 'legumes',
+        crop %in% c('Wiesen','Weiden','Feldgras','Rauhfutter') ~ 'grassland'))
 cropcatnms = unique(fin$cropcat)
 ```
 
@@ -167,29 +124,25 @@ mn_crop = fin %>%
 # TODO arrange plot for crop categories HOW?
 ggplot(mn_crop, aes(x=crop,y=mn_dt,  fill = cropcat)) + 
   geom_bar(stat = 'identity', width = 0.8) +
-  theme(axis.text.x = element_text(angle = 45, size = 9, vjust = 1, hjust = 1)) +
   labs(fill = 'crop category', y = 'dt/ha', x = '') +
-  scale_fill_brewer(palette='RdYlBu') +
-  ggtitle('Fig.1 Average yield of crops')
+  ggtitle('Fig.1 Average yield of crops') +
+  scale_fill_brewer(palette='Paired') +
+  theme(axis.text.x = element_text(angle = 45, size = 9, vjust = 1, hjust = 1)) 
 
 ggplot(mn_crop, aes(x=cropcat,y=mn_dt,  fill = cropcat)) + 
   geom_bar(stat = 'identity', width = 0.8) +
-  theme(axis.text.x = element_text(angle = 45, size = 9, vjust = 1, hjust = 1), legend.position ='none') +
   labs(fill = 'crop category', y = 'dt/ha', x = '') +
-  scale_fill_brewer(palette='RdYlBu') +
-  ggtitle('Fig.2 Average yield per crop category')
+  ggtitle('Fig.2 Average yield per crop category') +
+  scale_fill_brewer(palette='Paired') +
+  theme(axis.text.x = element_text(angle = 45, size = 9, vjust = 1, hjust = 1), legend.position ='none')
 ```
 
 The graphics show, that a cumulation of wheat, rye, oats to one group called cereals would be better comparable to other major crops. Other crop categories like legumes, rapeseed and sunflower can be disregarded due to low yield and unsuitable assignment to other categories.
 
 ```{r categorize 2}
 fin = fin %>%
-  mutate(cropcat2 = plyr::mapvalues(cropcat, 
-            from= c('cereal','wheat','rye','barley','oat'), 
-            to= c('cereals','cereals','cereals','cereals','cereals'))) %>%
-  mutate(cropcat2 = plyr::mapvalues(cropcat2, 
-            from= c('legumes','RapeseedSunflower','grassland'), 
-            to= c(NA,NA,NA))) 
+  mutate(cropcat2 = case_when(crop %in% c('cereal','wheat','rye','barley','oat') ~ 'cereal',
+                             crop %in% c('legumes','rapeseed','sunflower','grassland') ~ 'other'))
 cropcatnms2 = na.omit(unique(fin$cropcat2))
 ```
 
@@ -201,9 +154,8 @@ mn_jahr = fin %>%
 
 ggplot(mn_jahr, aes(x=year,y=mn_dt, fill=cropcat2)) + 
   geom_bar(position='stack', stat = 'identity', width =0.8) +
-  theme(axis.text.x = element_text(angle = 45, size = 9, vjust = 1, hjust = 1)) +
-  ggtitle('Fig.3 Average yield per year')
-
+  ggtitle('Fig.3 Average yield per year') +
+  theme(axis.text.x = element_text(angle = 45, size = 9, vjust = 1, hjust = 1))
 # average yield per crop per year
 # TODO have both colour codings in legend
 mn_cropjahr = fin %>%
@@ -248,28 +200,6 @@ fin = fin %>%
             to=c('D','DU','E','KR','MG','MH','OB','RS','SG','W','KLE','ME','NE','VIE','WES','BN','K','LEV','AC','DN','BM','EU','HS','GM','GL','SU','BOT','GE','MS','BOR','COE','RE','ST','WAF','BI','GT','HF','HX','LIP','MI', 'PB', 'BO','DO','HA','HAM','HER','EN','HSK','LS','OE','SI','SO','UN')))
 abbcode = data.frame(gen = unique(fin$gen), gn = unique(fin$gn))
 abbcode
-
-# average yield of each categorized crops per district
-# l = list()
-# myPalette <- colorRampPalette(rev(brewer.pal(11, "Spectral")))
-# for (i in 1:length(cropcatnms)){
-# mn_cropkreis = fin %>%
-#   group_by(cropcat,gen) %>%
-#   summarise(mn_dt = mean(dtha)) %>%
-#   filter(cropcat == cropcatnms[i])
-#   l[[i]] =  ggplot(data = mn_cropkreis) +
-#   geom_sf(aes(fill = mn_dt)) + 
-#     scale_fill_gradientn(colours = myPalette(100), limits=c(0,800)) +
-#   ggtitle(cropcatnms[i])#, subtitle = 'yield in dt per ha')
-#   if(i==length(cropcatnms)){ 
-#     l[[i]] = l[[i]] + theme(axis.text = element_blank(), axis.ticks = element_blank())
-#   }
-#   else {
-#     l[[i]] = l[[i]] + theme(axis.text = element_blank(), axis.ticks = element_blank(), legend.position = 'none')
-#   }
-# }
-# do.call(grid.arrange, c(l, top='Fig.5 Average yield of each crop category mapped for each district'))
-
 #TODO get tm_facets working
 mn_cropkreis = fin %>%
   na.omit() %>%
@@ -294,13 +224,13 @@ ggplot(mn_cropkreisf, aes(x=cropcat2, y=mn_dt, fill = cropcat2))+
   geom_bar(stat='identity') +
   facet_wrap(~gn, ncol = 10) +
   labs(fill = 'crop category', y = 'dt/ha', x = '') +
-  scale_fill_brewer(palette='RdYlBu') +
   ggtitle('Fig.8 Average yield per crop category for each district') + 
+  scale_fill_brewer(palette='RdYlBu') +
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.text.y = element_text(size = 7))
 ```
 
 ```{r crop index}
-# TODO better visuals: colour of bubbles as gradient, alpha for whole bubbles available?, legend only for colour or size, legend title as index, divide values by 1000
+# TODO better visuals: colour of bubbles as gradient, alpha fix, legend only for colour or size, legend title as index, divide values by 1000
 #TODO maybe replace sum_dtha<10000 with NA so that polygons of the district are saved for intersection with pest-data
 cropindex = fin %>%
   na.omit() %>%                     #sort out rows which don't fit to the 2nd crop classification
@@ -311,7 +241,17 @@ cropindex = fin %>%
   group_by(gn) %>%
   mutate(sum_dtha = sum(mn_dt)) %>% #summarise the average yield of crop categories per district
   filter(sum_dtha<10000)            #sort out districts below 10000 dt/ha
-tm_compass() + tm_scale_bar() + tm_shape(fin) + tm_polygons() + tm_shape(cropindex) + tm_bubbles(size='sum_dtha',  col='sum_dtha', style='pretty', scale=3)  + tm_shape(nrw) + tm_borders(lwd = 2, col='grey30')+ tm_layout(title='Fig.9 Crop index', title.bg.color=TRUE)
+tm_compass() + tm_scale_bar() + tm_shape(fin) + tm_polygons() + tm_shape(cropindex) + tm_bubbles(size='sum_dtha',  col='sum_dtha', alpha=0.5, scale=3)  + tm_shape(nrw) + tm_borders(lwd = 2, col='grey30')+ tm_layout(title='Fig.9 Crop index', title.bg.color=TRUE)
+
+ci = fin %>%
+  filter(year>=2010) %>%
+  group_by(crop) %>%
+  mutate(mn_dt = mean(dtha)) %>%
+  ungroup() %>%
+  group_by(year,gen) %>%
+  mutate(sum_dt = sum(mn_dt)) %>%
+  ungroup() %>%
+  filter(sum_dt >= 10000)
 ```
 
 ## Merge with pesticide data
@@ -333,7 +273,6 @@ ggplot(pest, aes(x=))
 #TODO calculate pest index - Messstation mit höchstem Landwirtschaftsanteil
 pestindex = pest %>%
   mutate(atkis_perc = atkis_perc*100) %>%     #agricultural proportion converted into percentage
-  group_by(site_id, gn) %>%
   
 #TODO visualize
 
