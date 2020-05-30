@@ -220,29 +220,43 @@ fin = fin %>%
 abbcode = data.frame(gen = unique(fin$gen), gn = unique(fin$gn))
 abbcode
 #####################################   WIP   #################################################
-#TODO get tm_facets working
-mn_cropkreis = fin %>%
-  na.omit() %>%
-  filter(year>=2010) %>%
-  group_by(cropcat2, gen, gn) %>%
-  summarise(mn_dt = mean(dtha)) 
-
-tm_layout(title='Fig.7 Average yield per district per crop category', title.bg.color=TRUE) +
-  tm_shape(nrw) + 
-  tm_borders(lwd = 2, col='grey30')+ 
-  tm_compass() + tm_scale_bar() + 
-tm_shape(mn_cropkreis) + 
-  tm_sf('mn_dt', palette='RdYlBu') + 
-  tm_facets(by='cropcat2')
+#TODO get tm_facets working maybe with tmap_arrange
+# mn_cropkreis = fin %>%
+#   filter(year>=2010) %>%
+#   group_by(cropcat2, gen, gn) %>%
+#   summarise(mn_dt = mean(dtha)) 
+# 
+# tm_layout(title='Fig.7 Average yield per district per crop category', title.bg.color=TRUE) +
+#   tm_shape(nrw) + 
+#   tm_borders(lwd = 2, col='grey30')+ 
+#   tm_compass() + tm_scale_bar() + 
+# tm_shape(mn_cropkreis) + 
+#   tm_sf('mn_dt', palette='RdYlBu') + 
+#   tm_facets(by='cropcat2')
 #####################################   WIP   #################################################
 # facetting approach for yield per crop per district barplot
 #TODO show with visual effect (red border, ..) which districts get sorted out
-mn_cropkreisf = fin %>%
-  na.omit() %>%
+cropkreis = fin %>%
+  #filter years 2009 and before
   filter(year>=2010) %>%
-  group_by(cropcat2,gn) %>%
-  summarise(mn_dt = mean(dtha))
-ggplot(mn_cropkreisf, aes(x=cropcat2, y=mn_dt, fill = cropcat2))+
+  #calculate average yield per crop per district over the 5 years
+  group_by(crop,cropcat2,gen,gn) %>%
+  summarise(mn_dt = mean(dtha)) %>%
+  ungroup() %>%
+  #calculate sum of yield per crop category per district
+  group_by(cropcat2,gen,gn) %>%
+  summarise(sum_dt = sum(mn_dt)) %>%
+  #mark districts of type 'city' and total crop yield below average of all districts
+  ungroup() %>%
+  mutate(city = case_when(str_detect(gen, 'Stadt') ~ TRUE,
+                          ! str_detect(gen, 'Stadt')~ FALSE)) %>%
+  group_by(gn) %>%
+  mutate(totsum_dt = sum(sum_dt)) %>%
+  ungroup()%>%
+  mutate(lowyield = case_when(totsum_dt<mean(totsum_dt) ~ TRUE,
+                              totsum_dt>=mean(totsum_dt) ~ FALSE))
+
+ggplot(cropkreis, aes(x=cropcat2, y=sum_dt, fill = cropcat2))+
   geom_bar(stat='identity') +
   facet_wrap(~gn, ncol = 10) +
   labs(fill = 'crop category', y = 'dt/ha', x = '') +
@@ -257,16 +271,19 @@ ci = fin %>%
   #filter years 2009 and before
   filter(year>=2010) %>%
   #calculate average yield per crop per district over the 5 years
-  group_by(crop,gen) %>%
-  mutate(mn_dt = mean(dtha)) %>%
+  group_by(crop,cropcat2,gen,gn) %>%
+  summarise(mn_dt = mean(dtha)) %>%
   ungroup() %>%
-  #calculate sum of yield per district over all crops (every year contains the same values in the mn_dt column)
-  group_by(year,gen) %>%
-  mutate(sum_dt = sum(mn_dt))
+  #calculate sum of yield per district 
+  group_by(cropcat2,gen,gn) %>%
+  summarise(sum_dt = sum(mn_dt)) %>%
+  #add column for total crop yield per district
+  group_by(gn) %>%
+  mutate(totsum_dt = sum(sum_dt))
 #filter districts below the mean of the sum_dt for visualiization purposes
 cisimple = ci %>%
-  filter(sum_dt>=mean(unique(sum_dt)))
-tm_compass() + tm_scale_bar() + tm_shape(fin) + tm_polygons() + tm_shape(cisimple) + tm_bubbles(size='sum_dt',  col='sum_dt', alpha=0.5, scale=3)  + tm_shape(nrw) + tm_borders(lwd = 2, col='grey30')+ tm_layout(title='Fig.9 Crop index', title.bg.color=TRUE)
+  filter(totsum_dt>=mean(unique(totsum_dt)))
+tm_compass() + tm_scale_bar() + tm_shape(fin) + tm_polygons() + tm_shape(cisimple) + tm_bubbles(size='totsum_dt',  col='totsum_dt', alpha=0.5, scale=3)  + tm_shape(nrw) + tm_borders(lwd = 2, col='grey30')+ tm_layout(title='Fig.9 Crop index', title.bg.color=TRUE)
 ```
 
 ## Merge with pesticide data
@@ -279,10 +296,11 @@ nrw_sam = readRDS(file.path('data/nrw', 'nrw_samples.rds')) # pesticide samples
 nrw_sam$site_id = gsub('_....-..-..','',nrw_sam$sample_id)
 pest = merge(nrw2, nrw_sam)
 #Transformation fitting to the german EPSG: 31467 and Intersection 
+#TODO vor Intersection niedrige aktisperc aussortieren
 st_crs(pest)
-st_crs(ci)
-ci = st_transform(ci, crs = st_crs(pest))
-pestcrop = st_intersection(ci, pest)
+st_crs(cisimple)
+cisimple = st_transform(cisimple, crs = st_crs(pest))
+pestcrop = st_intersection(cisimple, pest)
 #####################################   WIP   #################################################
 #TODO barplot Pestizide mit höchsten Konzentrationen
 ggplot(pest, aes(x=))
