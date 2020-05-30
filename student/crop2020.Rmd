@@ -21,7 +21,6 @@ require(tmap)
 require(grid)
 require(gridExtra)
 require(RColorBrewer)
-require(funchir) #delete after checking which packages are unused with stale_package_check('crop.Rmd')
 ```
 
 ## Harvest data
@@ -231,27 +230,20 @@ ggplot(mn_cropkreisf, aes(x=cropcat2, y=mn_dt, fill = cropcat2))+
 
 ```{r crop index}
 # TODO better visuals: colour of bubbles as gradient, alpha fix, legend only for colour or size, legend title as index, divide values by 1000
-#TODO maybe replace sum_dtha<10000 with NA so that polygons of the district are saved for intersection with pest-data
-cropindex = fin %>%
-  na.omit() %>%                     #sort out rows which don't fit to the 2nd crop classification
-  filter(year>=2010) %>%            #sort out years before 2010
-  group_by(cropcat2,gn) %>%         
-  mutate(mn_dt = mean(dtha)) %>%    #average yield per crop category and disrtict
-  ungroup(cropcat2) %>%
-  group_by(gn) %>%
-  mutate(sum_dtha = sum(mn_dt)) %>% #summarise the average yield of crop categories per district
-  filter(sum_dtha<10000)            #sort out districts below 10000 dt/ha
-tm_compass() + tm_scale_bar() + tm_shape(fin) + tm_polygons() + tm_shape(cropindex) + tm_bubbles(size='sum_dtha',  col='sum_dtha', alpha=0.5, scale=3)  + tm_shape(nrw) + tm_borders(lwd = 2, col='grey30')+ tm_layout(title='Fig.9 Crop index', title.bg.color=TRUE)
-
 ci = fin %>%
+  #filter years 2009 and before
   filter(year>=2010) %>%
-  group_by(crop) %>%
+  #calculate average yield per crop per district over the 5 years
+  group_by(crop,gen) %>%
   mutate(mn_dt = mean(dtha)) %>%
   ungroup() %>%
+  #calculate sum of yield per district over all crops (every year contains the same values in the mn_dt column)
   group_by(year,gen) %>%
-  mutate(sum_dt = sum(mn_dt)) %>%
-  ungroup() %>%
-  filter(sum_dt >= 10000)
+  mutate(sum_dt = sum(mn_dt))
+#filter districts below the mean of the sum_dt for visualiization purposes
+cisimple = ci %>%
+  filter(sum_dt>=mean(unique(sum_dt)))
+tm_compass() + tm_scale_bar() + tm_shape(fin) + tm_polygons() + tm_shape(cropindex) + tm_bubbles(size='sum_dtha',  col='sum_dtha', alpha=0.5, scale=3)  + tm_shape(nrw) + tm_borders(lwd = 2, col='grey30')+ tm_layout(title='Fig.9 Crop index', title.bg.color=TRUE)
 ```
 
 ## Merge with pesticide data
