@@ -124,18 +124,22 @@ mn_crop = fin %>%
   arrange(cropcat)
 # arrange plot for crop categories
 Set2_12=colorRampPalette(brewer.pal(8,'Set2'))(12)
+#tiff("Fig1.tiff", units="cm", width=16, height=10, res=300)
 ggplot(mn_crop, aes(x=crop,y=mn_dt,  fill = cropcat)) + 
   geom_bar(stat = 'identity', width = 0.8) +
   labs(fill = 'crop category', y = 'dt/ha', x = '') +
   ggtitle('Fig.1 Average yield of crops') +
   scale_fill_manual(values=Set2_12) +
-  theme(axis.text.x = element_text(angle = 45, size = 9, vjust = 1, hjust = 1)) 
+  theme(axis.text.x = element_text(angle = 45, size=7, vjust = 1, hjust = 1), legend.text = element_text(size=7)) 
+#dev.off()
+#tiff("Fig2.tiff", units="cm", width=16, height=7, res=300)
 ggplot(mn_crop, aes(x=cropcat,y=mn_dt,  fill = cropcat)) + 
   geom_bar(stat = 'identity', width = 0.8) +
   labs(fill = 'crop category', y = 'dt/ha', x = '') +
   ggtitle('Fig.2 Average yield per crop category') +
   scale_fill_manual(values=Set2_12) +
-  theme(axis.text.x = element_text(angle = 45, size = 9, vjust = 1, hjust = 1), legend.position ='none')
+  theme(axis.text.x = element_text(angle = 45, vjust = 1, hjust = 1), legend.position ='none')
+#dev.off()
 ```
 
 The graphics show, that a cumulation of wheat, rye, oats to one group called cereals would be better comparable to other major crops. Other crop categories like legumes, rapeseed and sunflower can be disregarded due to low yield and unsuitable assignment to other categories.
@@ -153,13 +157,14 @@ cropcatnms2 = na.omit(unique(fin$cropcat2))
 mn_jahr = fin %>%
   group_by(year,cropcat2) %>%
   summarise(mn_dt = mean(dtha))
-
+#tiff("Fig3.tiff", units="cm", width=16, height=7, res=300)
 ggplot(mn_jahr, aes(x=year,y=mn_dt, fill=cropcat2)) + 
   geom_bar(position='stack', stat = 'identity', width =0.8) +
   labs(fill = 'crop category', y = 'dt/ha', x = 'year') +
   ggtitle('Fig.3 Average yield per year per crop category') +
   scale_fill_brewer(palette='Set2')+
   theme(axis.text.x = element_text(angle = 45, size = 9, vjust = 1, hjust = 1))
+#dev.off()
 # average yield per crop per year
 mn_cropjahr = fin %>%
   group_by(year, crop, cropcat, cropcat2) %>%
@@ -169,6 +174,7 @@ smallcrop = filter(mn_cropjahr,mn_dt<100)
 
 unique(bigcrop$crop)
 cropjahrlegend = c('potatoes','early year potatoes', 'late year potatoes','sugar beet','fodder beet','silage maize')
+#tiff("Fig4.tiff", units="cm", width=16, height=7, res=300)
 ggplot() +
   geom_point(aes(x=year, y=mn_dt, colour = crop), bigcrop) +
   geom_line(aes(x=year, y=mn_dt,group = crop, colour = crop), bigcrop) +
@@ -179,6 +185,7 @@ ggplot() +
   scale_colour_manual(name  ='crop', values=c('#CC0000','#CC6600','#FFFF00','#00CCCC','#0066CC','#0000CC'),
                       labels=cropjahrlegend) +
   theme(axis.text.x = element_text(angle = 45, size = 9, vjust = 0.5))
+#dev.off()
 #Average of the total crop yield per year for 2005 to 2009
 cropyearspan1 = fin %>%
   filter(year<2010) %>%
@@ -198,18 +205,20 @@ cropyearspan2 = fin %>%
 #map for years 2005 to 2009
 summary(cropyearspan1)
 tm_yearspan1 = tm_shape(cropyearspan1) + 
-  tm_polygons('mn_dt', palette='Blues', breaks=c(0,1000,2000,3000,4000,5000), id='dt/ha', title='dt/ha') +
+  tm_polygons('mn_dt', palette='Blues', breaks=c(0,1000,2000,3000,4000,5000), id='dt/ha', title='dt/ha',lwd=0.6) +
   tm_compass() + 
   tm_scale_bar() + 
   tm_layout('Fig.5 Average over years 2005 to 2009 of total yield', title.bg.color = 'white')
 #map for years 2010 to 2015
 tm_yearspan2 = tm_shape(cropyearspan2) + 
-  tm_polygons('mn_dt', palette='Blues', breaks=c(0,1000,2000,3000,4000,5000), id='dt/ha', title='dt/ha') +
+  tm_polygons('mn_dt', palette='Blues', breaks=c(0,1000,2000,3000,4000,5000), id='dt/ha', title='dt/ha',lwd=0.6) +
   tm_compass() + 
   tm_scale_bar() + 
   tm_layout('Fig.6 Average over years 2010 to 2015 of total yield', title.bg.color = 'white')
 #map plotting
+#tiff("Fig56.tiff", units="cm", width=16, height=10, res=300)
 tmap_arrange(tm_yearspan1, tm_yearspan2)
+#dev.off()
 ```
 
 The graph in figure 4 shows, that some previously largely harvested crops fell significantly in yield below the 100 dt per ha mark in 2007 and 2009. This either indicates corrupted data, deviating data acquisition forms or actual drop of yield for those  specific crops. One possible reason could be the EU's energy crop directive of 2009 (EU2009 --> Official Journal of the European Union, https://eur-lex.europa.eu/LexUriServ/LexUriServ.do?uri=OJ:L:2009:140:0016:0062:EN:PDF)
@@ -236,14 +245,15 @@ cropkreis = fin %>%
   #calculate sum of yield per crop category per district
   group_by(cropcat2,gen,gn) %>%
   summarise(sum_dt = sum(mn_dt))
-
+#tiff("Fig7.tiff", units="cm", width=16, height=10, res=300)
 ggplot(cropkreis, aes(x=cropcat2, y=sum_dt, fill = cropcat2))+
   geom_bar(stat='identity') +
   facet_wrap(~gn, ncol = 10) +
   labs(fill = 'crop category', y = 'dt/ha', x = '') +
   ggtitle('Fig.7 Average yield per crop category for each district') + 
-  scale_fill_brewer(palette='RdYlBu') +
+  scale_fill_brewer(palette='Set2') +
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.text.y = element_text(size = 7))
+#dev.off()
 ```
 
 ```{r crop index}
@@ -260,8 +270,7 @@ ci = fin %>%
   #add column for total crop yield per district
   group_by(gn) %>%
   mutate(totsum_dt = sum(sum_dt))
-
-
+#tiff("Fig8.tiff", units="cm", width=16, height=10, res=300)
 tm_compass()+
 tm_scale_bar()+
   tm_shape(ci) +
@@ -269,8 +278,9 @@ tm_scale_bar()+
   tm_symbols(size = 'sum_dt', scale=3, col ='cropcat2',palette='Set2', alpha=1, border.lwd=0.1,border.alpha=0.5, 
              title.size ='sum of yield in dt/ha', title.col = 'crop category', title.shape='') +
 tm_shape(nrw) +
-  tm_borders() +
-tm_layout(main.title='Fig.9 Crop index', title.snap.to.legend =TRUE, legend.outside = TRUE, legend.outside.position='right')
+  tm_borders(lwd=0.6) +
+tm_layout(main.title='Fig.8 Crop index', title.snap.to.legend =TRUE, legend.outside = TRUE, legend.outside.position='right')
+#dev.off()
 ```
 
 ## Merge with pesticide data
@@ -287,17 +297,19 @@ pest = pestnofilter %>%
   filter(value_fin>0)
 #visualize all samples and sites
 tmap_options(max.categories=48)
+#tiff("Fig9.tiff", units="cm", width=16, height=10, res=300)
 tm_compass()+
 tm_scale_bar()+
   tm_shape(ci) +
   tm_fill('totsum_dt', style='pretty', palette='Blues', 
           textNA='district yield below average', title='total yield in dt/ha') +
 tm_shape(nrw) +
-  tm_borders() +
+  tm_borders(lwd = 0.6) +
 tm_shape(pest) +
   tm_symbols(size = 'value_fin', scale=3, col='psm_type' ,palette='Set2', alpha=0.8, border.alpha = 0.6, border.lwd=0.2, 
              title.size ='value of pesticide samples', title.col = 'type of pesticide', title.shape='') +
-tm_layout(main.title='Fig.10 Pesticide samples and crop index', title.snap.to.legend =TRUE, legend.outside = TRUE, legend.outside.position='right')
+tm_layout(main.title='Fig.9 Pesticide samples and crop index', title.snap.to.legend =TRUE, legend.outside = TRUE, legend.outside.position='right')
+#dev.off()
 
 pestindex = pest %>%
   select(site_id, area_sqkm, atkis_perc, name, cas, qualifier, value_fin, psm_type) %>%
@@ -357,11 +369,13 @@ pestcrop = pestcrop %>%
                                name=='Isoproturon'~value_fin))
 pestcrop %>% group_by(name) %>% summarise(max(concindex))
 #plot the use of pesticides per district
+#tiff("Fig10.tiff", units="cm", width=16, height=11, res=300)
 ggplot(pestcrop)+
   geom_bar(stat='identity', aes(x=name, y=concindex, fill = psm_type)) +
   facet_wrap(~gn, ncol = 10) +
   labs(fill = 'pesticide', y = 'concentration index', x = '') +
-  ggtitle('Fig.11 Pesticide index of 5 pesticides ') + 
+  ggtitle('Fig.10 Pesticide index of 5 pesticides ') + 
   scale_fill_brewer(palette='Set2') +
-  theme(axis.text.x=element_text(angle=90, size =7),axis.text.y = element_text(size = 7))
+  theme(axis.text.x=element_text(angle=90, size =7), axis.text.y=element_blank(), axis.ticks.y=element_blank())
+#dev.off()
 ```
