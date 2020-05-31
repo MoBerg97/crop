@@ -248,7 +248,7 @@ ggplot(cropkreis, aes(x=cropcat2, y=sum_dt, fill = cropcat2))+
   geom_bar(stat='identity') +
   facet_wrap(~gn, ncol = 10) +
   labs(fill = 'crop category', y = 'dt/ha', x = '') +
-  ggtitle('Fig.8 Average yield per crop category for each district') + 
+  ggtitle('Fig.7 Average yield per crop category for each district') + 
   scale_fill_brewer(palette='RdYlBu') +
   theme(axis.text.x = element_blank(), axis.ticks.x = element_blank(), axis.text.y = element_text(size = 7))
 ```
@@ -305,59 +305,69 @@ tm_shape(pest) +
              title.size ='value of pesticide samples', title.col = 'type of pesticide', title.shape='') +
 tm_layout(main.title='Fig.10 Pesticide samples and crop index', title.snap.to.legend =TRUE, legend.outside = TRUE, legend.outside.position='right')
 
-# WHAT I DID BEFORE I FOUND OUT THAT MOST VALUES ARE UNDER LOQ
-# # intersection would be to extensive, so need to narrow down the data.frame
-# # create sf object with sites and their agricult.prop. (atkis_perc)
-# atkischeck = pest %>%
-#   group_by(site_id) %>%
-#   summarise(atkis_perc = 100*mean(atkis_perc)) %>%
-#   arrange(atkis_perc)
-# summary(atkischeck$atkis_perc)
-# # intersect this sf object with the district sf object
-# # therefore transformation fitting to the german EPSG:31467
-# st_crs(atkischeck)
-# st_crs(nrw)
-# nrw = st_transform(nrw, crs = st_crs(pest))
-# atkis_kreis = st_intersection(nrw, atkischeck)
-# # choose highest site with highest agricul.prop. per district
-# atkis_kreis = atkis_kreis %>%
-#   group_by(rs) %>%
-#   mutate(max_atkis = max(atkis_perc)) %>%
-#   summarise(bestsite = na.omit(case_when(atkis_perc==max_atkis ~ site_id,
-#                                          TRUE ~ NA_character_)))
-# # save names of filtered sites
-# bestsites = unique(atkis_kreis$bestsite)
-# length(bestsites)       #check how many sites exist (one site per district was chosen, if available)
-# length(unique(nrw$rs))  #check how many districts exist
-# # filter original pest sf_object for the best sites
-# pest = pest %>%
-#   filter(case_when(site_id %in% bestsites ~ TRUE,
-#                    TRUE ~ FALSE))
-# #####################################   WIP   #################################################
-# # count how often certain pesticides were sampled to choose highest ones
-# pestdt = as.data.table(pest)
-# counts = pestdt[, .(rowCount =.N), by = c('cas','name','psm_type')]
-# counts = setorder(counts, rowCount)
-# #choose three herbicides with many observations and an insecticide and an fungicide
-# # fungicide   66063-05-6	Pencycuron
-# # herbicides 	5915-41-3	  Terbuthylazin
-# #             34123-59-6	Isoproturon
-# #             1912-24-9	  Atrazin
-# # insecticide 534-52-1	  4,6-Dinitro-o-Cresol
-
 pestindex = pest %>%
-  select(site_id, area_sqkm, atkis_perc, name, cas, qualifier, value) %>%
+  select(site_id, area_sqkm, atkis_perc, name, cas, qualifier, value_fin, psm_type) %>%
   mutate(atkis_perc = atkis_perc*100) %>% #agricultural proportion converted into percentage
-  # filter(cas %in% c('66063-05-6','5915-41-3','34123-59-6','1912-24-9','534-52-1')) %>%
-  mutate(conc = paste0(qualifier,value))
-#Intersection of the cropindex with the pestindex IS THIS NECESSARY or is tm_shape() layering better?
+  mutate(conc = paste0(qualifier,value_fin))
+
+# create sf object with sites and their agricult.prop. (atkis_perc)
+atkischeck = pestindex %>%
+  group_by(site_id) %>%
+  summarise(atkis_perc = mean(atkis_perc)) %>%
+  arrange(atkis_perc)
+# intersect this sf object with the district sf object
+# therefore transformation fitting to the german EPSG:31467
+st_crs(atkischeck)
+st_crs(nrw)
+nrw = st_transform(nrw, crs = st_crs(atkischeck))
+atkis_kreis = st_intersection(nrw, atkischeck)
+# choose highest site with highest agricul.prop. per district
+atkis_kreis = atkis_kreis %>%
+  #for each district calculate the maximal value of agricul.prop.
+  group_by(rs) %>%
+  mutate(max_atkis = max(atkis_perc)) %>%
+  # summarise only the site_ids of which their agricul.prop. equals the max agricul.prop.
+  summarise(bestsite = na.omit(case_when(atkis_perc==max_atkis ~ site_id,
+                                         TRUE ~ NA_character_)))
+#save a vector with those site_ids
+#since the geometries of the polygons of catchment areas overlap the districts, there are some sites referenced by multiple districts
+bestsites = unique(atkis_kreis$bestsite)
+length(bestsites)       #check how many sites exist (one site per district was chosen, if available)
+length(unique(nrw$rs))  #check how many districts exist
+# filter original pest sf_object for the best sites
+pestindex = pestindex %>%
+  filter(case_when(site_id %in% bestsites ~ TRUE,
+                   TRUE ~ FALSE))
+#to compare the districts we choose 
+pestindexdt = as.data.table(pestindex)
+counts = pestindexdt[, .(rowCount =.N), by = c('cas','name','psm_type')]
+counts = setorder(counts, rowCount)
+tail(counts,n=16)
+#choose three herbicides  and an insecticide and an fungicide of which the most samples exist
+# herbicides 	93-65-2             Mecoprop
+#             330-54-1            Diuron
+#             34123-59-6          Isoproturon
+# insecticide 534-52-1            4,6-Dinitro-o-Cresol
+# fungicide   133855-98-8         Epoxiconazol
+pestindex = pestindex %>%
+  filter(cas %in% c('93-65-2','330-54-1','34123-59-6','534-52-1','133855-98-8'))
+#Intersection of the cropindex with the pestindex
 st_crs(pestindex)
 st_crs(ci)
-ci = st_transform(ci, crs = st_crs(pestindex))
+ci = st_transform(ci, crs =st_crs(pestindex))
 pestcrop = st_intersection(ci, pestindex)
 
+tm_compass()+
+tm_scale_bar()+
+tm_shape(nrw) +
+  tm_borders() +
+tm_shape(pestcrop) +
+  tm_fill('totsum_dt', style='pretty', palette='Greens', textNA='district yield below average', 
+          title='total yield in dt/ha') +
+  tm_symbols(size = 'value_fin', scale=3, col='psm_type' ,palette='Set3', alpha=0.8, border.alpha = 0, 
+             title.size ='value of pesticide samples', title.col = 'type of pesticide', title.shape='') +
 
-#####################################   WIP   #################################################
+tm_layout(main.title='Fig.11 Pesticide index and crop index', title.snap.to.legend =TRUE, legend.outside = TRUE, legend.outside.position='right')
 ```
 
 ## Tasks
