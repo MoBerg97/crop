@@ -297,6 +297,15 @@ nrw_sam$site_id = gsub('_....-..-..','',nrw_sam$sample_id)
 pest = merge(nrw2, nrw_sam)
 #Transformation fitting to the german EPSG: 31467 and Intersection 
 #TODO vor Intersection niedrige aktisperc aussortieren
+aktischeck = pest %>%
+  group_by(site_id) %>%
+  summarise(atkis_perc = 100*mean(atkis_perc)) %>%
+  arrange(atkis_perc)
+summary(aktischeck$atkis_perc)
+#TODO intersect with aktischeck
+# choose highest atkis_perc per district
+# save names of filtered sites
+# filter original pest for those filtered sites
 st_crs(pest)
 st_crs(cisimple)
 cisimple = st_transform(cisimple, crs = st_crs(pest))
@@ -305,7 +314,7 @@ pestcrop = st_intersection(cisimple, pest)
 #TODO barplot Pestizide mit höchsten Konzentrationen
 ggplot(pest, aes(x=))
 #TODO calculate pest index - sample site with highest agricultural proportion
-pestindex = pest %>%
+pestindex = pestcrop %>%
   mutate(atkis_perc = atkis_perc*100)   #agricultural proportion converted into percentage
   
 #TODO visualize
