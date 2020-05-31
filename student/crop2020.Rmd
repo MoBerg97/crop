@@ -122,20 +122,19 @@ mn_crop = fin %>%
   group_by(crop,cropcat) %>%
   summarise(mn_dt = mean(dtha)) %>%
   arrange(cropcat)
-
 # arrange plot for crop categories
+Set2_12=colorRampPalette(brewer.pal(8,'Set2'))(12)
 ggplot(mn_crop, aes(x=crop,y=mn_dt,  fill = cropcat)) + 
   geom_bar(stat = 'identity', width = 0.8) +
   labs(fill = 'crop category', y = 'dt/ha', x = '') +
   ggtitle('Fig.1 Average yield of crops') +
-  scale_fill_brewer(palette='Paired') +
+  scale_fill_manual(values=Set2_12) +
   theme(axis.text.x = element_text(angle = 45, size = 9, vjust = 1, hjust = 1)) 
-
 ggplot(mn_crop, aes(x=cropcat,y=mn_dt,  fill = cropcat)) + 
   geom_bar(stat = 'identity', width = 0.8) +
   labs(fill = 'crop category', y = 'dt/ha', x = '') +
   ggtitle('Fig.2 Average yield per crop category') +
-  scale_fill_brewer(palette='Paired') +
+  scale_fill_manual(values=Set2_12) +
   theme(axis.text.x = element_text(angle = 45, size = 9, vjust = 1, hjust = 1), legend.position ='none')
 ```
 
@@ -159,9 +158,9 @@ ggplot(mn_jahr, aes(x=year,y=mn_dt, fill=cropcat2)) +
   geom_bar(position='stack', stat = 'identity', width =0.8) +
   labs(fill = 'crop category', y = 'dt/ha', x = 'year') +
   ggtitle('Fig.3 Average yield per year per crop category') +
+  scale_fill_brewer(palette='Set2')+
   theme(axis.text.x = element_text(angle = 45, size = 9, vjust = 1, hjust = 1))
 # average yield per crop per year
-# TODO have both colour codings in legend
 mn_cropjahr = fin %>%
   group_by(year, crop, cropcat, cropcat2) %>%
   summarise(mn_dt = mean(dtha))
@@ -227,7 +226,6 @@ fin = fin %>%
 abbcode = data.frame(gen = unique(fin$gen), gn = unique(fin$gn))
 abbcode
 # facetting approach for yield per crop per district barplot
-#TODO show with visual effect (red border, ..) which districts get sorted out
 cropkreis = fin %>%
   #filter years 2009 and before
   filter(year>=2010) %>%
@@ -267,8 +265,8 @@ ci = fin %>%
 tm_compass()+
 tm_scale_bar()+
   tm_shape(ci) +
-  tm_fill('totsum_dt', style='pretty', palette='Greens', textNA='district yield below average', title='total yield in dt/ha') +
-  tm_symbols(size = 'sum_dt', scale=3, col ='cropcat2',palette='Set3', alpha=1, border.lwd=0.1,border.alpha=0.5, 
+  tm_fill('totsum_dt', style='pretty', palette='Blues', textNA='district yield below average', title='total yield in dt/ha') +
+  tm_symbols(size = 'sum_dt', scale=3, col ='cropcat2',palette='Set2', alpha=1, border.lwd=0.1,border.alpha=0.5, 
              title.size ='sum of yield in dt/ha', title.col = 'crop category', title.shape='') +
 tm_shape(nrw) +
   tm_borders() +
@@ -292,12 +290,12 @@ tmap_options(max.categories=48)
 tm_compass()+
 tm_scale_bar()+
   tm_shape(ci) +
-  tm_fill('totsum_dt', style='pretty', palette='Greens', 
+  tm_fill('totsum_dt', style='pretty', palette='Blues', 
           textNA='district yield below average', title='total yield in dt/ha') +
 tm_shape(nrw) +
   tm_borders() +
 tm_shape(pest) +
-  tm_symbols(size = 'value_fin', scale=3, col='psm_type' ,palette='Set3', alpha=0.8, border.alpha = 0, 
+  tm_symbols(size = 'value_fin', scale=3, col='psm_type' ,palette='Set2', alpha=0.8, border.alpha = 0.6, border.lwd=0.2, 
              title.size ='value of pesticide samples', title.col = 'type of pesticide', title.shape='') +
 tm_layout(main.title='Fig.10 Pesticide samples and crop index', title.snap.to.legend =TRUE, legend.outside = TRUE, legend.outside.position='right')
 
@@ -364,25 +362,6 @@ ggplot(pestcrop)+
   facet_wrap(~gn, ncol = 10) +
   labs(fill = 'pesticide', y = 'concentration index', x = '') +
   ggtitle('Fig.11 Pesticide index of 5 pesticides ') + 
-  scale_fill_brewer(palette='RdYlBu') +
+  scale_fill_brewer(palette='Set2') +
   theme(axis.text.x=element_text(angle=90, size =7),axis.text.y = element_text(size = 7))
 ```
-
-## Tasks
-
-- Part1:
-  - Clean crop data
-  - Merge with spatial data
-  - Aggregate crop data
-  - Select 5-10 regions (i.e. Kreis) with the most agriculture
-  - Visualize regions with intensive agriculture
-
-- Part2:
-  - Intersect with pesticide sampling sites
-  - Look if sites with high concentrations intersect well with regions (i.e. Kreis) with high agriculture
-  - Visualize this
-
-- Document this in R-Markdown
-- Presentation?
-
-
