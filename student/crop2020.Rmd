@@ -157,7 +157,8 @@ mn_jahr = fin %>%
 
 ggplot(mn_jahr, aes(x=year,y=mn_dt, fill=cropcat2)) + 
   geom_bar(position='stack', stat = 'identity', width =0.8) +
-  ggtitle('Fig.3 Average yield per year') +
+  labs(fill = 'crop category', y = 'dt/ha', x = 'year') +
+  ggtitle('Fig.3 Average yield per year per crop category') +
   theme(axis.text.x = element_text(angle = 45, size = 9, vjust = 1, hjust = 1))
 # average yield per crop per year
 # TODO have both colour codings in legend
@@ -167,15 +168,18 @@ mn_cropjahr = fin %>%
 bigcrop = filter(mn_cropjahr,mn_dt>100)
 smallcrop = filter(mn_cropjahr,mn_dt<100)
 
-cropjahrlegend = cbind(unique(bigcrop$crop),c('other'))
+unique(bigcrop$crop)
+cropjahrlegend = c('potatoes','early year potatoes', 'late year potatoes','sugar beet','fodder beet','silage maize')
 ggplot() +
   geom_point(aes(x=year, y=mn_dt, colour = crop), bigcrop) +
   geom_line(aes(x=year, y=mn_dt,group = crop, colour = crop), bigcrop) +
   geom_point(aes(x=year, y=mn_dt), smallcrop, colour='grey50') +
   geom_line(aes(x=year, y=mn_dt,group = crop), smallcrop, colour='grey50') +
+  labs(y = 'dt/ha', x = 'year') +
   ggtitle('Fig.4 Average yield of crops for each year from 2005 to 2015') +
-  scale_colour_manual(name  ='crop', values=c('#CC0000','#CC6600','#FFFF00','#00CCCC','#0066CC','#0000CC'), labels=cropjahrlegend) +
-  theme(axis.text.x = element_text(angle = 45, size = 9, vjust = 0))
+  scale_colour_manual(name  ='crop', values=c('#CC0000','#CC6600','#FFFF00','#00CCCC','#0066CC','#0000CC'),
+                      labels=cropjahrlegend) +
+  theme(axis.text.x = element_text(angle = 45, size = 9, vjust = 0.5))
 #Average of the total crop yield per year for 2005 to 2009
 cropyearspan1 = fin %>%
   filter(year<2010) %>%
@@ -233,16 +237,7 @@ cropkreis = fin %>%
   ungroup() %>%
   #calculate sum of yield per crop category per district
   group_by(cropcat2,gen,gn) %>%
-  summarise(sum_dt = sum(mn_dt)) %>%
-  #mark districts of type 'city' and total crop yield below average of all districts
-  ungroup() %>%
-  mutate(city = case_when(str_detect(gen, 'Stadt') ~ TRUE,
-                          ! str_detect(gen, 'Stadt')~ FALSE)) %>%
-  group_by(gn) %>%
-  mutate(totsum_dt = sum(sum_dt)) %>%
-  ungroup()%>%
-  mutate(lowyield = case_when(totsum_dt<mean(totsum_dt) ~ TRUE,
-                              totsum_dt>=mean(totsum_dt) ~ FALSE))
+  summarise(sum_dt = sum(mn_dt))
 
 ggplot(cropkreis, aes(x=cropcat2, y=sum_dt, fill = cropcat2))+
   geom_bar(stat='identity') +
@@ -254,7 +249,6 @@ ggplot(cropkreis, aes(x=cropcat2, y=sum_dt, fill = cropcat2))+
 ```
 
 ```{r crop index}
-# TODO better visuals: colour of bubbles as gradient, alpha fix, legend only for colour or size, legend title as index, divide values by 1000
 ci = fin %>%
   #filter years 2009 and before
   filter(year>=2010) %>%
@@ -269,10 +263,13 @@ ci = fin %>%
   group_by(gn) %>%
   mutate(totsum_dt = sum(sum_dt))
 
+
 tm_compass()+
 tm_scale_bar()+
   tm_shape(ci) +
   tm_fill('totsum_dt', style='pretty', palette='Greens', textNA='district yield below average', title='total yield in dt/ha') +
+  tm_symbols(size = 'sum_dt', scale=3, col ='cropcat2',palette='Set3', alpha=1, border.lwd=0.1,border.alpha=0.5, 
+             title.size ='sum of yield in dt/ha', title.col = 'crop category', title.shape='') +
 tm_shape(nrw) +
   tm_borders() +
 tm_layout(main.title='Fig.9 Crop index', title.snap.to.legend =TRUE, legend.outside = TRUE, legend.outside.position='right')
@@ -292,7 +289,6 @@ pest = pestnofilter %>%
   filter(value_fin>0)
 #visualize all samples and sites
 tmap_options(max.categories=48)
-tmaptools::palette_explorer()
 tm_compass()+
 tm_scale_bar()+
   tm_shape(ci) +
@@ -307,9 +303,7 @@ tm_layout(main.title='Fig.10 Pesticide samples and crop index', title.snap.to.le
 
 pestindex = pest %>%
   select(site_id, area_sqkm, atkis_perc, name, cas, qualifier, value_fin, psm_type) %>%
-  mutate(atkis_perc = atkis_perc*100) %>% #agricultural proportion converted into percentage
-  mutate(conc = paste0(qualifier,value_fin))
-
+  mutate(atkis_perc = atkis_perc*100) #agricultural proportion converted into percentage
 # create sf object with sites and their agricult.prop. (atkis_perc)
 atkischeck = pestindex %>%
   group_by(site_id) %>%
@@ -321,7 +315,7 @@ st_crs(atkischeck)
 st_crs(nrw)
 nrw = st_transform(nrw, crs = st_crs(atkischeck))
 atkis_kreis = st_intersection(nrw, atkischeck)
-# choose highest site with highest agricul.prop. per district
+# choose site with highest agricul.prop. per district
 atkis_kreis = atkis_kreis %>%
   #for each district calculate the maximal value of agricul.prop.
   group_by(rs) %>%
@@ -351,23 +345,27 @@ tail(counts,n=16)
 # fungicide   133855-98-8         Epoxiconazol
 pestindex = pestindex %>%
   filter(cas %in% c('93-65-2','330-54-1','34123-59-6','534-52-1','133855-98-8'))
-#Intersection of the cropindex with the pestindex
+#merge the cropindex and pestindex
 st_crs(pestindex)
 st_crs(ci)
-ci = st_transform(ci, crs =st_crs(pestindex))
-pestcrop = st_intersection(ci, pestindex)
-
-tm_compass()+
-tm_scale_bar()+
-tm_shape(nrw) +
-  tm_borders() +
-tm_shape(pestcrop) +
-  tm_fill('totsum_dt', style='pretty', palette='Greens', textNA='district yield below average', 
-          title='total yield in dt/ha') +
-  tm_symbols(size = 'value_fin', scale=3, col='psm_type' ,palette='Set3', alpha=0.8, border.alpha = 0, 
-             title.size ='value of pesticide samples', title.col = 'type of pesticide', title.shape='') +
-
-tm_layout(main.title='Fig.11 Pesticide index and crop index', title.snap.to.legend =TRUE, legend.outside = TRUE, legend.outside.position='right')
+ci=st_transform(ci,crs=st_crs(pestindex))
+pestcrop = st_intersection(ci,pestindex)
+pestcrop %>% group_by(name) %>% summarise(max(value_fin))
+pestcrop = pestcrop %>%
+  mutate(concindex = case_when(name=='Mecoprop' ~ value_fin*20,
+                               name=='Diuron' ~ value_fin*5,
+                               name=='4,6-Dinitro-o-Cresol' ~ value_fin*20,
+                               name=='Epoxiconazol'~ value_fin*40,
+                               name=='Isoproturon'~value_fin))
+pestcrop %>% group_by(name) %>% summarise(max(concindex))
+#plot the use of pesticides per district
+ggplot(pestcrop)+
+  geom_bar(stat='identity', aes(x=name, y=concindex, fill = psm_type)) +
+  facet_wrap(~gn, ncol = 10) +
+  labs(fill = 'pesticide', y = 'concentration index', x = '') +
+  ggtitle('Fig.11 Pesticide index of 5 pesticides ') + 
+  scale_fill_brewer(palette='RdYlBu') +
+  theme(axis.text.x=element_text(angle=90, size =7),axis.text.y = element_text(size = 7))
 ```
 
 ## Tasks
