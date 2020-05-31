@@ -18,9 +18,12 @@ require(ggplot2)
 require(forcats)
 require(tidyr)
 require(tmap)
+require(tmaptools)
 require(grid)
 require(gridExtra)
 require(RColorBrewer)
+require(shiny)
+require(shinyjs)
 ```
 
 ## Harvest data
@@ -120,7 +123,7 @@ mn_crop = fin %>%
   summarise(mn_dt = mean(dtha)) %>%
   arrange(cropcat)
 
-# TODO arrange plot for crop categories HOW?
+# arrange plot for crop categories
 ggplot(mn_crop, aes(x=crop,y=mn_dt,  fill = cropcat)) + 
   geom_bar(stat = 'identity', width = 0.8) +
   labs(fill = 'crop category', y = 'dt/ha', x = '') +
@@ -190,20 +193,20 @@ cropyearspan2 = fin %>%
   group_by(gen) %>%
   summarise(mn_dt=mean(sum_dt))
 #map for years 2005 to 2009
-#TODO create equal breaks
+summary(cropyearspan1)
 tm_yearspan1 = tm_shape(cropyearspan1) + 
-  tm_sf('mn_dt', palette='RdYlBu', style='equal', id='dt/ha', title='dt/ha') + 
-tm_compass() + 
-tm_scale_bar() +
-tm_layout(title='Fig.5 Average of the total crop yield per year for 2005 to 2009', title.bg.color=TRUE)
+  tm_polygons('mn_dt', palette='Blues', breaks=c(0,1000,2000,3000,4000,5000), id='dt/ha', title='dt/ha') +
+  tm_compass() + 
+  tm_scale_bar() + 
+  tm_layout('Fig.5 Average over years 2005 to 2009 of total yield', title.bg.color = 'white')
 #map for years 2010 to 2015
 tm_yearspan2 = tm_shape(cropyearspan2) + 
-  tm_sf('mn_dt', palette='RdYlBu', style='equal', id='dt/ha', title='dt/ha') + 
-tm_compass() + 
-tm_scale_bar() +
-tm_layout(title='Fig.6 Average of the total crop yield per year for 2010 to 2015', title.bg.color=TRUE)
+  tm_polygons('mn_dt', palette='Blues', breaks=c(0,1000,2000,3000,4000,5000), id='dt/ha', title='dt/ha') +
+  tm_compass() + 
+  tm_scale_bar() + 
+  tm_layout('Fig.6 Average over years 2010 to 2015 of total yield', title.bg.color = 'white')
 #map plotting
-tmap_arrange(tm_yearspan1,tm_yearspan2)
+tmap_arrange(tm_yearspan1, tm_yearspan2)
 ```
 
 The graph in figure 4 shows, that some previously largely harvested crops fell significantly in yield below the 100 dt per ha mark in 2007 and 2009. This either indicates corrupted data, deviating data acquisition forms or actual drop of yield for those  specific crops. One possible reason could be the EU's energy crop directive of 2009 (EU2009 --> Official Journal of the European Union, https://eur-lex.europa.eu/LexUriServ/LexUriServ.do?uri=OJ:L:2009:140:0016:0062:EN:PDF)
@@ -219,21 +222,6 @@ fin = fin %>%
             to=c('D','DU','E','KR','MG','MH','OB','RS','SG','W','KLE','ME','NE','VIE','WES','BN','K','LEV','AC','DN','BM','EU','HS','GM','GL','SU','BOT','GE','MS','BOR','COE','RE','ST','WAF','BI','GT','HF','HX','LIP','MI', 'PB', 'BO','DO','HA','HAM','HER','EN','HSK','LS','OE','SI','SO','UN')))
 abbcode = data.frame(gen = unique(fin$gen), gn = unique(fin$gn))
 abbcode
-#####################################   WIP   #################################################
-#TODO get tm_facets working maybe with tmap_arrange
-# mn_cropkreis = fin %>%
-#   filter(year>=2010) %>%
-#   group_by(cropcat2, gen, gn) %>%
-#   summarise(mn_dt = mean(dtha)) 
-# 
-# tm_layout(title='Fig.7 Average yield per district per crop category', title.bg.color=TRUE) +
-#   tm_shape(nrw) + 
-#   tm_borders(lwd = 2, col='grey30')+ 
-#   tm_compass() + tm_scale_bar() + 
-# tm_shape(mn_cropkreis) + 
-#   tm_sf('mn_dt', palette='RdYlBu') + 
-#   tm_facets(by='cropcat2')
-#####################################   WIP   #################################################
 # facetting approach for yield per crop per district barplot
 #TODO show with visual effect (red border, ..) which districts get sorted out
 cropkreis = fin %>%
@@ -280,10 +268,14 @@ ci = fin %>%
   #add column for total crop yield per district
   group_by(gn) %>%
   mutate(totsum_dt = sum(sum_dt))
-#filter districts below the mean of the sum_dt for visualiization purposes
-cisimple = ci %>%
-  filter(totsum_dt>=mean(unique(totsum_dt)))
-tm_compass() + tm_scale_bar() + tm_shape(fin) + tm_polygons() + tm_shape(cisimple) + tm_bubbles(size='totsum_dt',  col='totsum_dt', alpha=0.5, scale=3)  + tm_shape(nrw) + tm_borders(lwd = 2, col='grey30')+ tm_layout(title='Fig.9 Crop index', title.bg.color=TRUE)
+
+tm_compass()+
+tm_scale_bar()+
+  tm_shape(ci) +
+  tm_fill('totsum_dt', style='pretty', palette='Greens', textNA='district yield below average', title='total yield in dt/ha') +
+tm_shape(nrw) +
+  tm_borders() +
+tm_layout(main.title='Fig.9 Crop index', title.snap.to.legend =TRUE, legend.outside = TRUE, legend.outside.position='right')
 ```
 
 ## Merge with pesticide data
@@ -293,31 +285,78 @@ To compare the crop yield with the pesticide usage, the sum of pesticide sample 
 ```{r data-spatial-pesticides}
 nrw2 = readRDS(file.path('data/nrw', 'nrw_sites.rds')) # spatial sites data
 nrw_sam = readRDS(file.path('data/nrw', 'nrw_samples.rds')) # pesticide samples
-nrw_sam$site_id = gsub('_....-..-..','',nrw_sam$sample_id)
-pest = merge(nrw2, nrw_sam)
-#Transformation fitting to the german EPSG: 31467 and Intersection 
-#TODO vor Intersection niedrige aktisperc aussortieren
-aktischeck = pest %>%
-  group_by(site_id) %>%
-  summarise(atkis_perc = 100*mean(atkis_perc)) %>%
-  arrange(atkis_perc)
-summary(aktischeck$atkis_perc)
-#TODO intersect with aktischeck
-# choose highest atkis_perc per district
-# save names of filtered sites
-# filter original pest for those filtered sites
-st_crs(pest)
-st_crs(cisimple)
-cisimple = st_transform(cisimple, crs = st_crs(pest))
-pestcrop = st_intersection(cisimple, pest)
-#####################################   WIP   #################################################
-#TODO barplot Pestizide mit höchsten Konzentrationen
-ggplot(pest, aes(x=))
-#TODO calculate pest index - sample site with highest agricultural proportion
-pestindex = pestcrop %>%
-  mutate(atkis_perc = atkis_perc*100)   #agricultural proportion converted into percentage
-  
-#TODO visualize
+nrw_sam$site_id = gsub('_....-..-..','',nrw_sam$sample_id) #create site_id in sample data.frame to merge by
+pestnofilter = merge(nrw2, nrw_sam, by='site_id')
+# sort out values below loq and with NAs with value_fin
+pest = pestnofilter %>%
+  filter(value_fin>0)
+#visualize all samples and sites
+tmap_options(max.categories=48)
+tmaptools::palette_explorer()
+tm_compass()+
+tm_scale_bar()+
+  tm_shape(ci) +
+  tm_fill('totsum_dt', style='pretty', palette='Greens', 
+          textNA='district yield below average', title='total yield in dt/ha') +
+tm_shape(nrw) +
+  tm_borders() +
+tm_shape(pest) +
+  tm_symbols(size = 'value_fin', scale=3, col='psm_type' ,palette='Set3', alpha=0.8, border.alpha = 0, 
+             title.size ='value of pesticide samples', title.col = 'type of pesticide', title.shape='') +
+tm_layout(main.title='Fig.10 Pesticide samples and crop index', title.snap.to.legend =TRUE, legend.outside = TRUE, legend.outside.position='right')
+
+# WHAT I DID BEFORE I FOUND OUT THAT MOST VALUES ARE UNDER LOQ
+# # intersection would be to extensive, so need to narrow down the data.frame
+# # create sf object with sites and their agricult.prop. (atkis_perc)
+# atkischeck = pest %>%
+#   group_by(site_id) %>%
+#   summarise(atkis_perc = 100*mean(atkis_perc)) %>%
+#   arrange(atkis_perc)
+# summary(atkischeck$atkis_perc)
+# # intersect this sf object with the district sf object
+# # therefore transformation fitting to the german EPSG:31467
+# st_crs(atkischeck)
+# st_crs(nrw)
+# nrw = st_transform(nrw, crs = st_crs(pest))
+# atkis_kreis = st_intersection(nrw, atkischeck)
+# # choose highest site with highest agricul.prop. per district
+# atkis_kreis = atkis_kreis %>%
+#   group_by(rs) %>%
+#   mutate(max_atkis = max(atkis_perc)) %>%
+#   summarise(bestsite = na.omit(case_when(atkis_perc==max_atkis ~ site_id,
+#                                          TRUE ~ NA_character_)))
+# # save names of filtered sites
+# bestsites = unique(atkis_kreis$bestsite)
+# length(bestsites)       #check how many sites exist (one site per district was chosen, if available)
+# length(unique(nrw$rs))  #check how many districts exist
+# # filter original pest sf_object for the best sites
+# pest = pest %>%
+#   filter(case_when(site_id %in% bestsites ~ TRUE,
+#                    TRUE ~ FALSE))
+# #####################################   WIP   #################################################
+# # count how often certain pesticides were sampled to choose highest ones
+# pestdt = as.data.table(pest)
+# counts = pestdt[, .(rowCount =.N), by = c('cas','name','psm_type')]
+# counts = setorder(counts, rowCount)
+# #choose three herbicides with many observations and an insecticide and an fungicide
+# # fungicide   66063-05-6	Pencycuron
+# # herbicides 	5915-41-3	  Terbuthylazin
+# #             34123-59-6	Isoproturon
+# #             1912-24-9	  Atrazin
+# # insecticide 534-52-1	  4,6-Dinitro-o-Cresol
+
+pestindex = pest %>%
+  select(site_id, area_sqkm, atkis_perc, name, cas, qualifier, value) %>%
+  mutate(atkis_perc = atkis_perc*100) %>% #agricultural proportion converted into percentage
+  # filter(cas %in% c('66063-05-6','5915-41-3','34123-59-6','1912-24-9','534-52-1')) %>%
+  mutate(conc = paste0(qualifier,value))
+#Intersection of the cropindex with the pestindex IS THIS NECESSARY or is tm_shape() layering better?
+st_crs(pestindex)
+st_crs(ci)
+ci = st_transform(ci, crs = st_crs(pestindex))
+pestcrop = st_intersection(ci, pestindex)
+
+
 #####################################   WIP   #################################################
 ```
 
